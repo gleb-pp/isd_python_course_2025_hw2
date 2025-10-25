@@ -1,5 +1,6 @@
-from classes.users import AccessToken, UserCreate, UserLogin
 from fastapi import APIRouter
+
+from src.app.classes.users import AccessToken, UserCreate, UserLogin
 
 router = APIRouter()
 

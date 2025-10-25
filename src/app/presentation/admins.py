@@ -1,9 +1,10 @@
 from typing import Annotated
 
-from auth import get_current_user
-from classes.common import Success
-from classes.users import User
 from fastapi import APIRouter, Depends
+
+from src.app.auth import get_current_user
+from src.app.classes.common import Success
+from src.app.classes.users import User
 
 router = APIRouter()
 

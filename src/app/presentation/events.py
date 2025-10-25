@@ -1,10 +1,12 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from auth import get_current_user
-from classes.common import Success
-from classes.events import EventFullInfo, EventID, EventMainInfo
 from fastapi import APIRouter, Depends, Query
+
+from src.app.auth import get_current_user
+from src.app.classes.common import Success
+from src.app.classes.events import EventFullInfo, EventID, EventMainInfo
 
 router = APIRouter()
 
@@ -17,18 +19,18 @@ async def create_event(
             ...,
             min_length=3,
             max_length=80,
-            description="Event must contain 3-80 symbols",
+            description="Event contain 3-80 symbols",
         ),
     ],
-    description: Annotated[
-        str | None,
+    date: Annotated[
+        datetime,
         Query(
-            None,
-            min_length=3,
-            max_length=1000,
-            description="Event description must contain 3–1000 symbols",
+            ...,
+            description="Event date in ISO format",
         ),
     ],
+    user_email: Annotated[str, Depends(get_current_user)],
+    description: Annotated[str | None, Query(min_length=3, max_length=1000)] = None,
 ) -> EventID:
     """Create the event with provided title and description.
 
@@ -52,7 +54,7 @@ async def delete_event(
 
 @router.get("/events", tags=["Events"])
 async def get_events(
-    event_id: UUID, user_email: Annotated[str, Depends(get_current_user)]
+    user_email: Annotated[str, Depends(get_current_user)],
 ) -> list[EventMainInfo]:
     """Get the list of available events with their main information.
 
@@ -63,7 +65,7 @@ async def get_events(
 
 
 @router.get("/events/{event_id}/info", tags=["Events"])
-async def event_info(
+async def get_event_info(
     event_id: UUID, user_email: Annotated[str, Depends(get_current_user)]
 ) -> EventMainInfo:
     """Get the main information about the event with provided event_id.
@@ -74,7 +76,7 @@ async def event_info(
 
 
 @router.get("/events/{event_id}/details", tags=["Events"])
-async def event_details(
+async def get_event_details(
     event_id: UUID, user_email: Annotated[str, Depends(get_current_user)]
 ) -> EventFullInfo:
     """Get detailed information about the event with provided event_id.
