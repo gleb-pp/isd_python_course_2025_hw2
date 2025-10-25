@@ -53,7 +53,7 @@ async def delete_event(
 
 
 @router.get("/events", tags=["Events"])
-async def get_events(
+async def get_events_list(
     user_email: Annotated[str, Depends(get_current_user)],
 ) -> list[EventMainInfo]:
     """Get the list of available events with their main information.
