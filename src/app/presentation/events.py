@@ -13,32 +13,24 @@ router = APIRouter()
 
 @router.post("/events", tags=["Events"])
 async def create_event(
-    title: Annotated[
-        str,
-        Query(
-            ...,
-            min_length=3,
-            max_length=80,
-            description="Event contain 3-80 symbols",
-        ),
-    ],
-    date: Annotated[
-        datetime,
-        Query(
-            ...,
-            description="Event date in ISO format",
-        ),
-    ],
+    title: Annotated[str, Query(..., min_length=3, max_length=80)],
+    date: Annotated[datetime, Query(...)],
+    is_offline: Annotated[bool, Query(...)],
+    location: Annotated[str, Query(..., min_length=3, max_length=200)],
     user_email: Annotated[str, Depends(get_current_user)],
     description: Annotated[str | None, Query(min_length=3, max_length=1000)] = None,
+    max_participants: Annotated[int | None, Query(gt=0)] = None,
 ) -> EventID:
     """Create the event with provided title and description.
 
     Title must contain from 3 to 80 symbols.
 
     Description parameter is optional.
+    If provided, it must contain from 3 to 1000 symbols.
 
-    If description is passed, it must contain from 3 to 1000 symbols.
+    Location must contain from 3 to 200 symbols, it can be an online link or an address.
+
+    Max number of participants is optional. If provided, it must be greater than 0.
     """
 
 
@@ -58,8 +50,8 @@ async def get_events_list(
 ) -> list[EventMainInfo]:
     """Get the list of available events with their main information.
 
-    For each event, main information includes event ID,
-    title, description, date, organizator_email, max_number_of_participants,
+    For each event, main information includes event ID, title, description, date,
+    is_offline flag, location, organizator_email, max_participants,
     and number of participants registered.
     """
 
@@ -70,8 +62,9 @@ async def get_event_info(
 ) -> EventMainInfo:
     """Get the main information about the event with provided event_id.
 
-    Main information includes event ID, title, description, date, organizator_email,
-    max_number_of_participants, and number of participants registered.
+    Main information includes event ID, title, description, date,
+    is_offline flag, location, organizator_email, max_participants,
+    and number of participants registered.
     """
 
 
@@ -81,8 +74,8 @@ async def get_event_details(
 ) -> EventFullInfo:
     """Get detailed information about the event with provided event_id.
 
-    Detailed information includes event ID, title, description,
-    date, organizator_email, max_number_of_participants,
+    Detailed information includes event ID, title, description, date,
+    is_offline flag, location, organizator_email, max_participants,
     number of participants registered, and the list of participants' emails.
 
     Event Organizator role for the provided event_id required.

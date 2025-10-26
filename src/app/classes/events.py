@@ -16,9 +16,11 @@ class EventMainInfo(EventID):
     title: str
     description: str | None
     date: datetime
+    is_offline: bool
+    location: str
     organizator_email: str
-    max_number_of_participants: int
-    participants_registered: int
+    max_participants: int | None
+    participants_registered: int = 0
 
 
 class EventFullInfo(EventMainInfo):
