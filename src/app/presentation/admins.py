@@ -3,13 +3,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from src.app.auth import get_current_user
-from src.app.classes.common import Success
-from src.app.classes.users import User
+from src.app.models.common import Success
+from src.app.models.users import User, UserCreate
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/admin",
+    tags=["Admins"],
+)
 
 
-@router.get("/admin/users", tags=["Admins"])
+@router.get("/users")
 async def get_all_users(
     user_email: Annotated[str, Depends(get_current_user)],
 ) -> list[User]:
@@ -21,7 +24,17 @@ async def get_all_users(
     """
 
 
-@router.delete("/admin/users/{user_email}", tags=["Admins"])
+@router.post("/users/")
+async def create_user(
+    new_user: UserCreate, admin_email: Annotated[str, Depends(get_current_user)]
+):
+    """Create a user account with provided email, name, and password.
+
+    Admin role required.
+    """
+
+
+@router.delete("/users/{user_email}")
 async def delete_user(
     deleted_user_email: str, user_email: Annotated[str, Depends(get_current_user)]
 ) -> Success:
@@ -37,11 +50,13 @@ async def delete_user(
     """
 
 
-@router.delete("/admin/events/{event_id}", tags=["Admins"])
+@router.delete("/events/{event_id}")
 async def delete_event(
-    deleted_user_email: str, user_email: Annotated[str, Depends(get_current_user)]
+    event_id: str, user_email: Annotated[str, Depends(get_current_user)]
 ) -> Success:
     """Remove the event with provided event_id.
 
     Admin role required.
     """
+
+# TODO: метрики
