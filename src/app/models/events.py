@@ -18,6 +18,8 @@ class EventInfo(EventID):
     date: datetime
     is_offline: bool
     location: str
-    organizator_email: str
+    organizer_email: str
     max_participants: int | None
-    participants_registered: int = 0
+
+    class Config:
+        from_attributes = True

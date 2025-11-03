@@ -4,9 +4,10 @@ from src.app.repo.users import User
 from datetime import datetime, timezone, timedelta
 from jose import jwt
 from src.app.auth import pwd_hasher, ACCESS_TOKEN_EXPIRE_MINUTES, JWT_SECRET_KEY, ALGORITHM
+from sqlalchemy.orm import Session
 
 
-def create_user(email, name, password, db) -> None:
+def create_user(email: str, name: str, password: str, db: Session) -> None:
     """Create a new user with provided email, name, and password."""
 
     # validation of email format
@@ -42,7 +43,7 @@ def create_user(email, name, password, db) -> None:
     db.add(user)
 
 
-def get_access_token(email, password, db) -> str:
+def get_access_token(email: str, password: str, db: Session) -> str:
     """Get JWT access token for user with provided email and password."""
 
     # checking whether such user exists

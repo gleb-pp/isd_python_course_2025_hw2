@@ -59,9 +59,6 @@ async def login(user: UserLogin, db: Session = Depends(get_db)) -> AccessToken:
         token = src.app.logic.users.get_access_token(user.email, user.password, db)
         db.commit()
         return AccessToken(access_token=token)
-    except (
-        user_errors.UserNotFoundError,
-        user_errors.InvalidPasswordError
-    ) as e:
+    except user_errors.UserException as e:
         db.rollback()
         raise HTTPException(status_code=401, detail=str(e))
