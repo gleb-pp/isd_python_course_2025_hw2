@@ -27,7 +27,7 @@ async def get_all_users(
 @router.post("/users/")
 async def create_user(
     new_user: UserCreate, admin_email: Annotated[str, Depends(get_current_user)]
-):
+) -> Success:
     """Create a user account with provided email, name, and password.
 
     Admin role required.
@@ -58,5 +58,6 @@ async def delete_event(
 
     Admin role required.
     """
+
 
 # TODO: метрики

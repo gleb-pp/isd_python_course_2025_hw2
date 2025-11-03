@@ -1,16 +1,20 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
-import src.app.logic.users
-import src.app.exceptions.users as user_errors
-from src.app.db import get_db
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+import src.app.exceptions.users as user_errors
+import src.app.logic.users
+from src.app.db import get_db
 from src.app.models.users import AccessToken, UserCreate, UserLogin
 
 router = APIRouter(tags=["Users"])
 
 
 @router.post("/register")
-async def register(user: UserCreate, db: Session = Depends(get_db)) -> AccessToken:
+async def register(
+    user: UserCreate, db: Annotated[Session, Depends(get_db)]
+) -> AccessToken:
     """Register a user account with provided email, name, and password.
 
     User email should be in the correct format.
@@ -23,7 +27,6 @@ async def register(user: UserCreate, db: Session = Depends(get_db)) -> AccessTok
 
     Returns email and JWT access token for 30 minutes.
     """
-
     try:
         src.app.logic.users.create_user(user.email, user.name, user.password, db)
         db.flush()
@@ -33,32 +36,28 @@ async def register(user: UserCreate, db: Session = Depends(get_db)) -> AccessTok
     except (
         user_errors.EmailFormatError,
         user_errors.NameFormatError,
-        user_errors.WeakPasswordError
+        user_errors.WeakPasswordError,
     ) as e:
         db.rollback()
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except user_errors.UserExistsError as e:
         db.rollback()
-        raise HTTPException(status_code=409, detail=str(e))
-    except (
-        user_errors.UserNotFoundError,
-        user_errors.InvalidPasswordError
-    ) as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except (user_errors.UserNotFoundError, user_errors.InvalidPasswordError) as e:
         db.rollback()
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=401, detail=str(e)) from e
 
 
 @router.post("/login")
-async def login(user: UserLogin, db: Session = Depends(get_db)) -> AccessToken:
+async def login(
+    user: UserLogin, db: Annotated[Session, Depends(get_db)]
+) -> AccessToken:
     """Log into user account with provided email and password.
 
     Returns email and JWT access token for 30 minutes.
     """
-
     try:
         token = src.app.logic.users.get_access_token(user.email, user.password, db)
-        db.commit()
         return AccessToken(access_token=token)
-    except user_errors.UserException as e:
-        db.rollback()
-        raise HTTPException(status_code=401, detail=str(e))
+    except user_errors.UserError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e

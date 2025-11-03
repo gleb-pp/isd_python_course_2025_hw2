@@ -1,12 +1,18 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+
 from src.app.repo.base import Base
 
-class Booking(Base):
-    __tablename__ = 'bookings'
 
-    event_id = Column(Integer, ForeignKey('events.id'), primary_key=True)
-    user_email = Column(String(254), ForeignKey('users.email'), primary_key=True)
+class Booking(Base):
+    """Database model for the bookings."""
+
+    __tablename__ = "bookings"
+
+    event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
+    user_email: Mapped[str] = mapped_column(
+        String(254), ForeignKey("users.email"), primary_key=True
+    )
 
     event = relationship("Event", back_populates="bookings")
     user = relationship("User", back_populates="bookings")

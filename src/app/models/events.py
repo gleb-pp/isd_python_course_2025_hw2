@@ -22,4 +22,6 @@ class EventInfo(EventID):
     max_participants: int | None
 
     class Config:
+        """ORM mode configuration."""
+
         from_attributes = True
