@@ -1,5 +1,4 @@
 from datetime import datetime
-from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -15,9 +14,8 @@ def create_event(
     description: str | None,
     max_participants: int | None,
     db: Session,
-    *,
     is_offline: bool = True,
-) -> UUID:
+) -> int:
     """Create a new event in the database and return its ID."""
     event = Event(
         title=title,
@@ -33,7 +31,7 @@ def create_event(
     return event.id
 
 
-def delete_event(event_id: UUID, organizer_email: str, db: Session) -> None:
+def delete_event(event_id: int, organizer_email: str, db: Session) -> None:
     """Delete an event from the database if the organizer_email matches."""
     event = db.query(Event).filter_by(id=event_id).first()
     if event is None:
@@ -49,7 +47,7 @@ def get_events_list(db: Session) -> list[Event]:
     return db.query(Event).all()
 
 
-def get_event_info(event_id: UUID, db: Session) -> Event:
+def get_event_info(event_id: int, db: Session) -> Event:
     """Retrieve detailed information about a specific event by its ID."""
     event = db.query(Event).filter_by(id=event_id).first()
     if event is None:

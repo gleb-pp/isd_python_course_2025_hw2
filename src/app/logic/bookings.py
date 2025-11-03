@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from sqlalchemy.orm import Session
 
 import src.app.exceptions.bookings as booking_errors
@@ -8,7 +6,7 @@ from src.app.repo.bookings import Booking
 from src.app.repo.events import Event
 
 
-def create_booking(event_id: UUID, user_email: str, db: Session) -> None:
+def create_booking(event_id: int, user_email: str, db: Session) -> None:
     """Register the user with provided email to the event with provided event_id."""
     # check if event exists
     event = db.query(Event).filter_by(id=event_id).first()
@@ -33,7 +31,7 @@ def create_booking(event_id: UUID, user_email: str, db: Session) -> None:
     db.add(new_booking)
 
 
-def delete_booking(event_id: UUID, user_email: str, db: Session) -> None:
+def delete_booking(event_id: int, user_email: str, db: Session) -> None:
     """Unregister the user with provided email from the event with provided event_id."""
     # check if event exists
     event = db.query(Event).filter_by(id=event_id).first()
@@ -51,7 +49,7 @@ def delete_booking(event_id: UUID, user_email: str, db: Session) -> None:
     db.delete(booking)
 
 
-def get_event_participants(event_id: UUID, user_email: str, db: Session) -> list[str]:
+def get_event_participants(event_id: int, user_email: str, db: Session) -> list[str]:
     """Get the list of user emails registered for the event with provided event_id."""
     # check if event exists
     event = db.query(Event).filter_by(id=event_id).first()

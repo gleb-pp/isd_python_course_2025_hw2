@@ -34,7 +34,7 @@ class UserNotFoundError(UserError):
     """Exception raised when a user is not found."""
 
     def __init__(self, email: str) -> None:
-        super().__init__(f"User {email} not found.")
+        super().__init__(f"User {email} does not exist.")
 
 
 class InvalidPasswordError(UserError):
@@ -42,3 +42,10 @@ class InvalidPasswordError(UserError):
 
     def __init__(self) -> None:
         super().__init__("Invalid password.")
+
+
+class InvalidTokenError(UserError):
+    """Exception raised for invalid authentication token."""
+
+    def __init__(self) -> None:
+        super().__init__("Invalid authentication token.")

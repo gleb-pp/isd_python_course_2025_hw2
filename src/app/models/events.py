@@ -1,5 +1,4 @@
 from datetime import datetime
-from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -7,7 +6,7 @@ from pydantic import BaseModel
 class EventID(BaseModel):
     """Unique identifier for an event."""
 
-    event_id: UUID
+    event_id: int
 
 
 class EventInfo(EventID):

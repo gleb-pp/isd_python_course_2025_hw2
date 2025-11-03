@@ -1,5 +1,4 @@
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -20,7 +19,7 @@ router = APIRouter(
 
 @router.post("/")
 async def create_booking(
-    event_id: UUID,
+    event_id: int,
     user_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> Success:
@@ -42,7 +41,7 @@ async def create_booking(
 
 @router.delete("/{event_id}")
 async def delete_booking(
-    event_id: UUID,
+    event_id: int,
     user_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> Success:
@@ -58,7 +57,7 @@ async def delete_booking(
 
 @router.get("/{event_id}")
 async def get_event_participants(
-    event_id: UUID,
+    event_id: int,
     user_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> EventParticipants:

@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -49,7 +48,7 @@ async def create_event(
 
 @router.delete("/{event_id}")
 async def delete_event(
-    event_id: UUID,
+    event_id: int,
     user_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> Success:
@@ -82,7 +81,7 @@ async def get_events_list(db: Annotated[Session, Depends(get_db)]) -> list[Event
 
 @router.get("/{event_id}")
 async def get_event_info(
-    event_id: UUID,
+    event_id: int,
     db: Annotated[Session, Depends(get_db)],
 ) -> EventInfo:
     """Get the main information about the event with provided event_id.
