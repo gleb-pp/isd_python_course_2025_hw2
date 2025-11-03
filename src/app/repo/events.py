@@ -1,5 +1,4 @@
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from src.app.repo.base import Base
 
@@ -16,3 +15,4 @@ class Event(Base):
     max_participants = Column(Integer, nullable=True)
 
     organizer = relationship("User", back_populates="organized_events")
+    bookings = relationship("Booking", back_populates="event")

@@ -11,3 +11,4 @@ class User(Base):
     password_hash = Column(String(128), nullable=False)
 
     organized_events = relationship("Event", back_populates="organizer")
+    bookings = relationship("Booking", back_populates="user")
