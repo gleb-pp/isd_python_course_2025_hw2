@@ -10,7 +10,7 @@ class EventID(BaseModel):
     event_id: UUID
 
 
-class EventMainInfo(EventID):
+class EventInfo(EventID):
     """Main information about an event."""
 
     title: str
@@ -21,9 +21,3 @@ class EventMainInfo(EventID):
     organizator_email: str
     max_participants: int | None
     participants_registered: int = 0
-
-
-class EventFullInfo(EventMainInfo):
-    """Full information about an event, including participants' emails."""
-
-    participants_emails: list[str]

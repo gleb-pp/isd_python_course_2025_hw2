@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 
 from src.app.auth import get_current_user
 from src.app.models.common import Success
-from src.app.models.events import EventFullInfo
+from src.app.models.bookings import EventParticipants
 
 router = APIRouter(
     prefix="/bookings",
@@ -33,7 +33,7 @@ async def leave_event(
 @router.get("/{event_id}")
 async def get_event_bookings(
     event_id: UUID, user_email: Annotated[str, Depends(get_current_user)]
-) -> EventFullInfo:
+) -> EventParticipants:
     """Get the list of participants' emails for the event with provided event_id.
 
     Event Organizator role for the provided event_id required.

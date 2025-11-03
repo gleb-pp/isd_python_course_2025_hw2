@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 
 from src.app.auth import get_current_user
 from src.app.models.common import Success
-from src.app.models.events import EventFullInfo, EventID, EventMainInfo
+from src.app.models.events import EventID, EventInfo
 
 router = APIRouter(
     prefix="/events",
@@ -50,7 +50,7 @@ async def delete_event(
 @router.get("/")
 async def get_events_list(
     user_email: Annotated[str, Depends(get_current_user)],
-) -> list[EventMainInfo]:
+) -> list[EventInfo]:
     """Get the list of available events with their main information.
 
     For each event, main information includes event ID, title, description, date,
@@ -59,10 +59,10 @@ async def get_events_list(
     """
 
 
-@router.get("/{event_id}/info")
+@router.get("/{event_id}")
 async def get_event_info(
     event_id: UUID, user_email: Annotated[str, Depends(get_current_user)]
-) -> EventMainInfo:
+) -> EventInfo:
     """Get the main information about the event with provided event_id.
 
     Main information includes event ID, title, description, date,
