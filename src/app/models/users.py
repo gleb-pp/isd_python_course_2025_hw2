@@ -4,7 +4,6 @@ from pydantic import BaseModel
 class AccessToken(BaseModel):
     """Access token for authenticated user."""
 
-    email: str
     access_token: str
 
 
