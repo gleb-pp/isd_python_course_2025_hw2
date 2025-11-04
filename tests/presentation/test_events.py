@@ -16,7 +16,6 @@ from src.app.repo.users import User
 client = TestClient(app)
 
 HTTP_200_OK = 200
-HTTP_409_CONFLICT = 409
 HTTP_401_UNAUTHORIZED = 401
 HTTP_404_NOT_FOUND = 404
 HTTP_403_FORBIDDEN = 403
