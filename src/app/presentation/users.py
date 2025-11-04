@@ -56,9 +56,9 @@ async def login(
     Returns email and JWT access token for 30 minutes.
     """
     try:
-        user = user_logic.get_user(user.email, db)
-        user_logic.verify_password(user, user.password)
-        token = user_logic.get_access_token(user)
+        system_user = user_logic.get_user(user.email, db)
+        user_logic.verify_password(system_user, user.password)
+        token = user_logic.get_access_token(system_user)
         return AccessToken(access_token=token)
     except user_errors.UserError as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
