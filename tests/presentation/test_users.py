@@ -72,9 +72,6 @@ def test__register__invalid_email() -> None:
     app.dependency_overrides[get_db] = lambda: mock_db
     user_data = {"email": "gpopov", "name": "Gleb", "password": "12345678"}
 
-    mock_user = create_mock_user()
-    mock_token = token_hex(32)
-
     with (
         patch(
             "src.app.presentation.users.user_logic.validate_user_email",
@@ -86,12 +83,9 @@ def test__register__invalid_email() -> None:
         patch(
             "src.app.presentation.users.user_logic.validate_password_lenght"
         ) as mock_validate_password,
+        patch("src.app.presentation.users.user_logic.create_user") as mock_create_user,
         patch(
-            "src.app.presentation.users.user_logic.create_user", return_value=mock_user
-        ) as mock_create_user,
-        patch(
-            "src.app.presentation.users.user_logic.get_access_token",
-            return_value=mock_token,
+            "src.app.presentation.users.user_logic.get_access_token"
         ) as mock_get_access_token,
     ):
         response = client.post("/register", json=user_data)
@@ -116,9 +110,6 @@ def test__register__invalid_name() -> None:
         "password": "12345678",
     }
 
-    mock_user = create_mock_user()
-    mock_token = token_hex(32)
-
     with (
         patch(
             "src.app.presentation.users.user_logic.validate_user_email"
@@ -130,12 +121,9 @@ def test__register__invalid_name() -> None:
         patch(
             "src.app.presentation.users.user_logic.validate_password_lenght"
         ) as mock_validate_password,
+        patch("src.app.presentation.users.user_logic.create_user") as mock_create_user,
         patch(
-            "src.app.presentation.users.user_logic.create_user", return_value=mock_user
-        ) as mock_create_user,
-        patch(
-            "src.app.presentation.users.user_logic.get_access_token",
-            return_value=mock_token,
+            "src.app.presentation.users.user_logic.get_access_token"
         ) as mock_get_access_token,
     ):
         response = client.post("/register", json=user_data)
@@ -156,9 +144,6 @@ def test__register__invalid_password() -> None:
     app.dependency_overrides[get_db] = lambda: mock_db
     user_data = {"email": "g.popov@inno.ru", "name": "Gleb", "password": "123"}
 
-    mock_user = create_mock_user()
-    mock_token = token_hex(32)
-
     with (
         patch(
             "src.app.presentation.users.user_logic.validate_user_email"
@@ -170,12 +155,9 @@ def test__register__invalid_password() -> None:
             "src.app.presentation.users.user_logic.validate_password_lenght",
             side_effect=user_errors.WeakPasswordError,
         ) as mock_validate_password,
+        patch("src.app.presentation.users.user_logic.create_user") as mock_create_user,
         patch(
-            "src.app.presentation.users.user_logic.create_user", return_value=mock_user
-        ) as mock_create_user,
-        patch(
-            "src.app.presentation.users.user_logic.get_access_token",
-            return_value=mock_token,
+            "src.app.presentation.users.user_logic.get_access_token"
         ) as mock_get_access_token,
     ):
         response = client.post("/register", json=user_data)
@@ -196,8 +178,6 @@ def test__register__user_exists() -> None:
     app.dependency_overrides[get_db] = lambda: mock_db
     user_data = {"email": "g.popov@inno.ru", "name": "Gleb", "password": "12345678"}
 
-    mock_token = token_hex(32)
-
     with (
         patch(
             "src.app.presentation.users.user_logic.validate_user_email"
@@ -213,8 +193,7 @@ def test__register__user_exists() -> None:
             side_effect=user_errors.UserExistsError(user_data["email"]),
         ) as mock_create_user,
         patch(
-            "src.app.presentation.users.user_logic.get_access_token",
-            return_value=mock_token,
+            "src.app.presentation.users.user_logic.get_access_token"
         ) as mock_get_access_token,
     ):
         response = client.post("/register", json=user_data)
@@ -267,8 +246,6 @@ def test__login__random_email() -> None:
     app.dependency_overrides[get_db] = lambda: mock_db
     user_data = {"email": "g.popov@inno.ru", "password": "12345678"}
 
-    mock_token = token_hex(32)
-
     with (
         patch(
             "src.app.presentation.users.user_logic.get_user",
@@ -278,8 +255,7 @@ def test__login__random_email() -> None:
             "src.app.presentation.users.user_logic.verify_password"
         ) as mock_verify_password,
         patch(
-            "src.app.presentation.users.user_logic.get_access_token",
-            return_value=mock_token,
+            "src.app.presentation.users.user_logic.get_access_token"
         ) as mock_get_token,
     ):
         response = client.post("/login", json=user_data)
@@ -297,7 +273,6 @@ def test__login__wrong_password() -> None:
     user_data = {"email": "g.popov@inno.ru", "password": "wrongpass"}
 
     mock_user = create_mock_user()
-    mock_token = token_hex(32)
 
     with (
         patch(
@@ -308,8 +283,7 @@ def test__login__wrong_password() -> None:
             side_effect=user_errors.InvalidPasswordError,
         ) as mock_verify_password,
         patch(
-            "src.app.presentation.users.user_logic.get_access_token",
-            return_value=mock_token,
+            "src.app.presentation.users.user_logic.get_access_token"
         ) as mock_get_token,
     ):
         response = client.post("/login", json=user_data)

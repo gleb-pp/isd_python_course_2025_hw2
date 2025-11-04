@@ -1,13 +1,13 @@
-from secrets import token_hex
 from datetime import UTC, datetime
+from random import randint
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-import src.app.exceptions.users as user_errors
 import src.app.exceptions.events as event_errors
-from src.app.db import get_db
+import src.app.exceptions.users as user_errors
 from src.app.auth import get_current_user
+from src.app.db import get_db
 from src.app.main import app
 from src.app.models.events import EventBase
 from src.app.repo.events import Event
@@ -16,7 +16,6 @@ from src.app.repo.users import User
 client = TestClient(app)
 
 HTTP_200_OK = 200
-HTTP_422_UNPROCESSABLE_ENTITY = 422
 HTTP_409_CONFLICT = 409
 HTTP_401_UNAUTHORIZED = 401
 HTTP_404_NOT_FOUND = 404
@@ -30,12 +29,14 @@ def create_mock_event_base(**kwargs: object) -> MagicMock:
         setattr(mock_event_base, key, value)
     return mock_event_base
 
+
 def create_mock_event(**kwargs: object) -> MagicMock:
     """Create a mock Event object for testing."""
     mock_event = MagicMock(spec=Event)
     for key, value in kwargs.items():
         setattr(mock_event, key, value)
     return mock_event
+
 
 def create_mock_user(**kwargs: object) -> MagicMock:
     """Create a mock User object for testing."""
@@ -56,11 +57,13 @@ def test__create_event() -> None:
         "date": datetime(2024, 1, 1, 12, 0, tzinfo=UTC).isoformat(),
         "is_offline": True,
         "location": "Room 108",
-        "max_participants": 60,
+        "max_participants": randint(10, 50),
     }
 
     with (
-        patch("src.app.presentation.events.events_logic.create_event") as mock_create_event,
+        patch(
+            "src.app.presentation.events.events_logic.create_event"
+        ) as mock_create_event,
     ):
         response = client.post("/events/", json=json_data)
 
@@ -71,7 +74,7 @@ def test__create_event() -> None:
     assert called_args[0].date == datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
     assert called_args[0].is_offline is True
     assert called_args[0].location == "Room 108"
-    assert called_args[0].max_participants == 60
+    assert called_args[0].max_participants == json_data["max_participants"]
     assert called_args[1] == "g.popov@inno.ru"
     assert called_args[2] is mock_db
 
@@ -90,10 +93,19 @@ def test__delete_event__success() -> None:
     mock_event = create_mock_event()
 
     with (
-        patch("src.app.presentation.events.user_logic.get_user", return_value=mock_user) as mock_get_user,
-        patch("src.app.presentation.events.events_logic.get_event", return_value=mock_event) as mock_get_event,
-        patch("src.app.presentation.events.events_logic.assert_user_is_organizer") as mock_assert_organizer,
-        patch("src.app.presentation.events.events_logic.delete_event") as mock_delete_event,
+        patch(
+            "src.app.presentation.events.user_logic.get_user", return_value=mock_user
+        ) as mock_get_user,
+        patch(
+            "src.app.presentation.events.events_logic.get_event",
+            return_value=mock_event,
+        ) as mock_get_event,
+        patch(
+            "src.app.presentation.events.events_logic.assert_user_is_organizer"
+        ) as mock_assert_organizer,
+        patch(
+            "src.app.presentation.events.events_logic.delete_event"
+        ) as mock_delete_event,
     ):
         response = client.delete("/events/1")
 
@@ -114,10 +126,17 @@ def test__delete_event__invalid_user() -> None:
     app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
     with (
-        patch("src.app.presentation.events.user_logic.get_user", side_effect=user_errors.UserNotFoundError("g.popov@inno.ru")) as mock_get_user,
+        patch(
+            "src.app.presentation.events.user_logic.get_user",
+            side_effect=user_errors.UserNotFoundError("g.popov@inno.ru"),
+        ) as mock_get_user,
         patch("src.app.presentation.events.events_logic.get_event") as mock_get_event,
-        patch("src.app.presentation.events.events_logic.assert_user_is_organizer") as mock_assert_organizer,
-        patch("src.app.presentation.events.events_logic.delete_event") as mock_delete_event,
+        patch(
+            "src.app.presentation.events.events_logic.assert_user_is_organizer"
+        ) as mock_assert_organizer,
+        patch(
+            "src.app.presentation.events.events_logic.delete_event"
+        ) as mock_delete_event,
     ):
         response = client.delete("/events/1")
 
@@ -138,9 +157,16 @@ def test__delete_event__no_event() -> None:
 
     with (
         patch("src.app.presentation.events.user_logic.get_user") as mock_get_user,
-        patch("src.app.presentation.events.events_logic.get_event", side_effect=event_errors.EventNotFoundError(1)) as mock_get_event,
-        patch("src.app.presentation.events.events_logic.assert_user_is_organizer") as mock_assert_organizer,
-        patch("src.app.presentation.events.events_logic.delete_event") as mock_delete_event,
+        patch(
+            "src.app.presentation.events.events_logic.get_event",
+            side_effect=event_errors.EventNotFoundError(1),
+        ) as mock_get_event,
+        patch(
+            "src.app.presentation.events.events_logic.assert_user_is_organizer"
+        ) as mock_assert_organizer,
+        patch(
+            "src.app.presentation.events.events_logic.delete_event"
+        ) as mock_delete_event,
     ):
         response = client.delete("/events/1")
 
@@ -163,10 +189,20 @@ def test__delete_event__not_organizer() -> None:
     mock_event = create_mock_event()
 
     with (
-        patch("src.app.presentation.events.user_logic.get_user", return_value=mock_user) as mock_get_user,
-        patch("src.app.presentation.events.events_logic.get_event", return_value=mock_event) as mock_get_event,
-        patch("src.app.presentation.events.events_logic.assert_user_is_organizer", side_effect=event_errors.OrginizatorRoleRequiredError(1, "g.popov@inno.ru")) as mock_assert_organizer,
-        patch("src.app.presentation.events.events_logic.delete_event") as mock_delete_event,
+        patch(
+            "src.app.presentation.events.user_logic.get_user", return_value=mock_user
+        ) as mock_get_user,
+        patch(
+            "src.app.presentation.events.events_logic.get_event",
+            return_value=mock_event,
+        ) as mock_get_event,
+        patch(
+            "src.app.presentation.events.events_logic.assert_user_is_organizer",
+            side_effect=event_errors.OrginizatorRoleRequiredError(1, "g.popov@inno.ru"),
+        ) as mock_assert_organizer,
+        patch(
+            "src.app.presentation.events.events_logic.delete_event"
+        ) as mock_delete_event,
     ):
         response = client.delete("/events/1")
 
@@ -186,55 +222,58 @@ def test__get_events_list() -> None:
     app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
     mock_events = [
-        create_mock_event(id=1,
-                        title="Test",
-                        description="Test",
-                        date=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-                        is_offline=True,
-                        location="Innopolis",
-                        organizer_email='g.popov@inno.ru',
-                        max_participants=60
-                        ),
-        create_mock_event(id=2,
-                        title="Test",
-                        description="Test",
-                        date=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-                        is_offline=True,
-                        location="Innopolis",
-                        organizer_email='g.popov@inno.ru',
-                        max_participants=60
-                        )
+        create_mock_event(
+            id=1,
+            title="Test",
+            description="Test",
+            date=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
+            is_offline=True,
+            location="Innopolis",
+            organizer_email="g.popov@inno.ru",
+            max_participants=60,
+        ),
+        create_mock_event(
+            id=2,
+            title="Test",
+            description="Test",
+            date=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
+            is_offline=True,
+            location="Innopolis",
+            organizer_email="g.popov@inno.ru",
+            max_participants=60,
+        ),
     ]
 
-    with (
-        patch("src.app.presentation.events.events_logic.get_events_list", return_value=mock_events) as mock_get_events_list
-    ):
+    with patch(
+        "src.app.presentation.events.events_logic.get_events_list",
+        return_value=mock_events,
+    ) as mock_get_events_list:
         response = client.get("/events/")
 
     mock_get_events_list.assert_called_once_with(mock_db)
     assert response.status_code == HTTP_200_OK
     assert response.json() == [
-            {
-                "id":1,
-                "title":"Test",
-                "description":"Test",
-                "date":"2024-01-01T12:00:00Z",
-                "is_offline":True,
-                "location":"Innopolis",
-                "organizer_email":'g.popov@inno.ru',
-                "max_participants":60
-            },
-            {
-                "id":2,
-                "title":"Test",
-                "description":"Test",
-                "date":"2024-01-01T12:00:00Z",
-                "is_offline":True,
-                "location":"Innopolis",
-                "organizer_email":'g.popov@inno.ru',
-                "max_participants":60
-            },
-        ]
+        {
+            "id": 1,
+            "title": "Test",
+            "description": "Test",
+            "date": "2024-01-01T12:00:00Z",
+            "is_offline": True,
+            "location": "Innopolis",
+            "organizer_email": "g.popov@inno.ru",
+            "max_participants": 60,
+        },
+        {
+            "id": 2,
+            "title": "Test",
+            "description": "Test",
+            "date": "2024-01-01T12:00:00Z",
+            "is_offline": True,
+            "location": "Innopolis",
+            "organizer_email": "g.popov@inno.ru",
+            "max_participants": 60,
+        },
+    ]
 
 
 def test__get_event_info__success() -> None:
@@ -250,26 +289,26 @@ def test__get_event_info__success() -> None:
         date=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         is_offline=True,
         location="Innopolis",
-        organizer_email='g.popov@inno.ru',
-        max_participants=60
+        organizer_email="g.popov@inno.ru",
+        max_participants=60,
     )
 
-    with (
-        patch("src.app.presentation.events.events_logic.get_event", return_value=mock_event) as mock_get_event
-    ):
+    with patch(
+        "src.app.presentation.events.events_logic.get_event", return_value=mock_event
+    ) as mock_get_event:
         response = client.get("/events/1")
 
     mock_get_event.assert_called_once_with(1, mock_db)
     assert response.status_code == HTTP_200_OK
     assert response.json() == {
-        "id":1,
-        "title":"Test",
-        "description":"Test",
-        "date":"2024-01-01T12:00:00Z",
-        "is_offline":True,
-        "location":"Innopolis",
-        "organizer_email":'g.popov@inno.ru',
-        "max_participants":60
+        "id": 1,
+        "title": "Test",
+        "description": "Test",
+        "date": "2024-01-01T12:00:00Z",
+        "is_offline": True,
+        "location": "Innopolis",
+        "organizer_email": "g.popov@inno.ru",
+        "max_participants": 60,
     }
 
 
@@ -279,9 +318,10 @@ def test__get_event_info__no_event() -> None:
     app.dependency_overrides[get_db] = lambda: mock_db
     app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
-    with (
-        patch("src.app.presentation.events.events_logic.get_event", side_effect=event_errors.EventNotFoundError(1)) as mock_get_event
-    ):
+    with patch(
+        "src.app.presentation.events.events_logic.get_event",
+        side_effect=event_errors.EventNotFoundError(1),
+    ) as mock_get_event:
         response = client.get("/events/1")
 
     mock_get_event.assert_called_once_with(1, mock_db)
