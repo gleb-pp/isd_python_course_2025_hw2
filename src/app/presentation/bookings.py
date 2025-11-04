@@ -20,7 +20,7 @@ router = APIRouter(
 )
 
 
-@router.post("/")
+@router.post("/{event_id}")
 async def create_booking(
     event_id: int,
     user_email: Annotated[str, Depends(get_current_user)],
@@ -84,9 +84,8 @@ async def get_event_participants(
         event = events_logic.get_event(event_id, db)
         events_logic.assert_user_is_organizer(event, user)
         participants_emails = bookings_logic.get_event_participants(event, db)
-        return EventParticipants.model_validate(participants_emails)
+        return EventParticipants(participants_emails=participants_emails)
     except user_errors.UserNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

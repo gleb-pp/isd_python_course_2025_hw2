@@ -235,7 +235,7 @@ async def get_event_participants(
         user_logic.assert_user_is_admin(user)
         event = events_logic.get_event(event_id, db)
         participants_emails = bookings_logic.get_event_participants(event, db)
-        return EventParticipants.model_validate(participants_emails)
+        return EventParticipants(participants_emails=participants_emails)
     except user_errors.UserNotFoundError as e:
         db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e

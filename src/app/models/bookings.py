@@ -5,7 +5,6 @@ class EventParticipants(BaseModel):
     """The list of event's participants."""
 
     participants_emails: list[str]
-    model_config = ConfigDict(from_attributes=True)
 
 
 class Booking(BaseModel):
