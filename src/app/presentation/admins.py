@@ -3,17 +3,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+import src.app.exceptions.bookings as booking_errors
+import src.app.exceptions.events as event_errors
+import src.app.exceptions.users as user_errors
+import src.app.logic.bookings as bookings_logic
+import src.app.logic.events as events_logic
+import src.app.logic.users as user_logic
 from src.app.auth import get_current_user
 from src.app.db import get_db
+from src.app.models.bookings import Booking, EventParticipants
 from src.app.models.common import Success
-from src.app.models.bookings import EventParticipants, Booking
 from src.app.models.users import User, UserCreate
-import src.app.logic.users as user_logic
-import src.app.exceptions.users as user_errors
-import src.app.logic.events as events_logic
-import src.app.exceptions.events as event_errors
-import src.app.logic.bookings as bookings_logic
-import src.app.exceptions.bookings as booking_errors
 
 router = APIRouter(
     prefix="/admin",
@@ -32,8 +32,7 @@ async def get_all_users(
 
     Admin role required.
     """
-    
-    try: 
+    try:
         user = user_logic.get_user(admin_email, db)
         user_logic.assert_user_is_admin(user)
         users = user_logic.get_all_users(db)
@@ -62,8 +61,7 @@ async def create_user(
 
     Admin role required.
     """
-
-    try: 
+    try:
         user = user_logic.get_user(admin_email, db)
         user_logic.assert_user_is_admin(user)
         user_logic.validate_user_email(new_user.email)
@@ -106,7 +104,6 @@ async def delete_user(
 
     Admin role required.
     """
-
     try:
         user = user_logic.get_user(admin_email, db)
         user_logic.assert_user_is_admin(user)
@@ -114,7 +111,7 @@ async def delete_user(
         raise HTTPException(status_code=401, detail=str(e)) from e
     except user_errors.AdminRoleRequiredError as e:
         raise HTTPException(status_code=403, detail=str(e)) from e
-    
+
     try:
         deleted_user = user_logic.get_user(deleted_user_email, db)
         user_logic.delete_user(deleted_user, db)
@@ -127,7 +124,7 @@ async def delete_user(
 
 @router.delete("/events/{event_id}")
 async def delete_event(
-    event_id: str,
+    event_id: int,
     admin_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> Success:
@@ -135,7 +132,6 @@ async def delete_event(
 
     Admin role required.
     """
-
     try:
         user = user_logic.get_user(admin_email, db)
         user_logic.assert_user_is_admin(user)
@@ -156,7 +152,7 @@ async def delete_event(
 
 @router.post("/bookings/{event_id}/{guest_email}")
 async def create_user_booking(
-    event_id: str, 
+    event_id: int,
     guest_email: str,
     admin_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -168,29 +164,32 @@ async def create_user_booking(
     try:
         user = user_logic.get_user(admin_email, db)
         user_logic.assert_user_is_admin(user)
+    except user_errors.UserNotFoundError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
+    except user_errors.AdminRoleRequiredError as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
+
+    try:
+        guest = user_logic.get_user(guest_email, db)
         event = events_logic.get_event(event_id, db)
         bookings_logic.assert_seats_available(event, db)
-        bookings_logic.create_booking(event, user, db)
+        bookings_logic.create_booking(event, guest, db)
         db.commit()
         return Success(success=True)
     except user_errors.UserNotFoundError as e:
         db.rollback()
-        raise HTTPException(status_code=401, detail=str(e)) from e
-    except user_errors.AdminRoleRequiredError as e:
-        db.rollback()
-        raise HTTPException(status_code=403, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
     except booking_errors.EventFullError as e:
         db.rollback()
         raise HTTPException(status_code=409, detail=str(e)) from e
-    
 
 
 @router.delete("/bookings/{event_id}/{guest_email}")
 async def delete_user_booking(
-    event_id: str, 
+    event_id: int,
     guest_email: str,
     admin_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -199,20 +198,23 @@ async def delete_user_booking(
 
     Admin role required.
     """
-
     try:
         user = user_logic.get_user(admin_email, db)
         user_logic.assert_user_is_admin(user)
+    except user_errors.UserNotFoundError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
+    except user_errors.AdminRoleRequiredError as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
+
+    try:
+        guest = user_logic.get_user(guest_email, db)
         event = events_logic.get_event(event_id, db)
-        bookings_logic.delete_booking(event, user, db)
+        bookings_logic.delete_booking(event, guest, db)
         db.commit()
         return Success(success=True)
     except user_errors.UserNotFoundError as e:
         db.rollback()
-        raise HTTPException(status_code=401, detail=str(e)) from e
-    except user_errors.AdminRoleRequiredError as e:
-        db.rollback()
-        raise HTTPException(status_code=403, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -220,7 +222,7 @@ async def delete_user_booking(
 
 @router.get("/bookings/{event_id}")
 async def get_event_participants(
-    event_id: str,
+    event_id: int,
     admin_email: Annotated[str, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> EventParticipants:

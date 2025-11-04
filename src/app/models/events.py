@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EventID(BaseModel):
@@ -8,17 +9,29 @@ class EventID(BaseModel):
 
     id: int
 
+    class Config:
+        """ORM mode configuration."""
 
-class EventInfo(EventID):
-    """Main information about an event."""
+        from_attributes = True
 
-    title: str
-    description: str | None
+
+class EventBase(BaseModel):
+    """Base event information."""
+
+    title: Annotated[str, Field(min_length=3, max_length=80)]
+    description: Annotated[
+        str | None, Field(default=None, min_length=3, max_length=1000)
+    ]
     date: datetime
     is_offline: bool
-    location: str
+    location: Annotated[str, Field(min_length=3, max_length=200)]
+    max_participants: Annotated[int | None, Field(default=None, gt=0)] = None
+
+
+class EventInfo(EventBase, EventID):
+    """Main information about an event."""
+
     organizer_email: str
-    max_participants: int | None
 
     class Config:
         """ORM mode configuration."""

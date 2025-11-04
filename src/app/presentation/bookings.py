@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 
 import src.app.exceptions.bookings as booking_errors
 import src.app.exceptions.events as event_errors
+import src.app.exceptions.users as user_errors
 import src.app.logic.bookings as bookings_logic
 import src.app.logic.events as events_logic
 import src.app.logic.users as user_logic
-import src.app.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
 from src.app.models.bookings import EventParticipants
@@ -82,7 +82,7 @@ async def get_event_participants(
     try:
         user = user_logic.get_user(user_email, db)
         event = events_logic.get_event(event_id, db)
-        events_logic.assert_user_is_organizer(event, user, db)
+        events_logic.assert_user_is_organizer(event, user)
         participants_emails = bookings_logic.get_event_participants(event, db)
         return EventParticipants.model_validate(participants_emails)
     except user_errors.UserNotFoundError as e:

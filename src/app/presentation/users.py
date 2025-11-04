@@ -27,7 +27,6 @@ async def register(
 
     Returns email and JWT access token for 30 minutes.
     """
-
     try:
         user_logic.validate_user_email(user.email)
         user_logic.validate_user_name(user.name)
@@ -56,7 +55,6 @@ async def login(
 
     Returns email and JWT access token for 30 minutes.
     """
-
     try:
         user = user_logic.get_user(user.email, db)
         user_logic.verify_password(user, user.password)

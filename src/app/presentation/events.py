@@ -1,17 +1,16 @@
-from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import src.app.exceptions.events as event_errors
+import src.app.exceptions.users as user_errors
 import src.app.logic.events as events_logic
 import src.app.logic.users as user_logic
-import src.app.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
 from src.app.models.common import Success
-from src.app.models.events import EventID, EventInfo
+from src.app.models.events import EventBase, EventID, EventInfo
 
 router = APIRouter(
     prefix="/events",
@@ -21,14 +20,9 @@ router = APIRouter(
 
 @router.post("/")
 async def create_event(
+    event_base: EventBase,
     db: Annotated[Session, Depends(get_db)],
-    title: Annotated[str, Query(..., min_length=3, max_length=80)],
-    date: Annotated[datetime, Query(...)],
-    is_offline: Annotated[bool, Query(...)],
-    location: Annotated[str, Query(..., min_length=3, max_length=200)],
     user_email: Annotated[str, Depends(get_current_user)],
-    description: Annotated[str | None, Query(min_length=3, max_length=1000)] = None,
-    max_participants: Annotated[int | None, Query(gt=0)] = None,
 ) -> EventID:
     """Create the event with provided title and description.
 
@@ -41,9 +35,7 @@ async def create_event(
 
     Max number of participants is optional. If provided, it must be greater than 0.
     """
-    event = events_logic.create_event(
-        title, date, location, user_email, description, max_participants, db, is_offline
-    )
+    event = events_logic.create_event(event_base, user_email, db)
     db.commit()
     return EventID.model_validate(event)
 
@@ -58,11 +50,10 @@ async def delete_event(
 
     Event Organizator role for the provided event_id required.
     """
-
     try:
         user = user_logic.get_user(user_email, db)
         event = events_logic.get_event(event_id, db)
-        events_logic.assert_user_is_organizer(event, user, db)
+        events_logic.assert_user_is_organizer(event, user)
         events_logic.delete_event(event, db)
         db.commit()
         return Success(success=True)

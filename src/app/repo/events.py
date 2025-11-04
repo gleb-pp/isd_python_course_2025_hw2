@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.app.repo.base import Base
 
@@ -9,7 +9,7 @@ class Event(Base):
 
     __tablename__ = "events"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(80), nullable=False)
     description = Column(Text, nullable=True)
     date = Column(DateTime, nullable=False)

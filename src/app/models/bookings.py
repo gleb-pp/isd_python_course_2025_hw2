@@ -17,3 +17,8 @@ class Booking(BaseModel):
 
     event_id: int
     user_email: str
+
+    class Config:
+        """ORM mode configuration."""
+
+        from_attributes = True
