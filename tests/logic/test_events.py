@@ -1,18 +1,19 @@
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
-from datetime import datetime
+
+import pytest
 
 import src.app.exceptions.events as event_errors
 from src.app.logic.events import (
-    create_event,
-    get_event,
     assert_user_is_organizer,
+    create_event,
     delete_event,
-    get_events_list
+    get_event,
+    get_events_list,
 )
-from src.app.repo.users import User
-from src.app.repo.events import Event
 from src.app.models.events import EventBase
+from src.app.repo.events import Event
+from src.app.repo.users import User
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
@@ -37,12 +38,12 @@ def test__create_event__valid() -> None:
     event_base = EventBase(
         title="Midterm",
         description="Midterm Assignment",
-        date=datetime(2024, 1, 1, 12, 0),
+        date=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         is_offline=True,
         location="Room 108",
-        max_participants=60
+        max_participants=60,
     )
-    
+
     mock_event = create_mock_event(
         id=1,
         title=event_base.title,
@@ -51,7 +52,7 @@ def test__create_event__valid() -> None:
         is_offline=event_base.is_offline,
         location=event_base.location,
         organizer_email="g.popov@inno.ru",
-        max_participants=event_base.max_participants
+        max_participants=event_base.max_participants,
     )
 
     with patch("src.app.logic.events.Event", return_value=mock_event):
@@ -103,7 +104,7 @@ def test__delete_event__called() -> None:
     """Check delete_event calls db.delete."""
     mock_db = MagicMock()
     event = create_mock_event(id=1, title="Midterm")
-    
+
     delete_event(event, mock_db)
     mock_db.delete.assert_called_once_with(event)
 
@@ -113,7 +114,7 @@ def test__get_events_list() -> None:
     mock_db = MagicMock()
     mock_events = [
         create_mock_event(id=1, title="Event 1"),
-        create_mock_event(id=2, title="Event 2")
+        create_mock_event(id=2, title="Event 2"),
     ]
     mock_db.query().all.return_value = mock_events
     events = get_events_list(mock_db)
