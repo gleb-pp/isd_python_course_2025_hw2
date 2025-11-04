@@ -1,18 +1,14 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class EventID(BaseModel):
     """Unique identifier for an event."""
 
     id: int
-
-    class Config:
-        """ORM mode configuration."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventBase(BaseModel):
@@ -32,8 +28,4 @@ class EventInfo(EventBase, EventID):
     """Main information about an event."""
 
     organizer_email: str
-
-    class Config:
-        """ORM mode configuration."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

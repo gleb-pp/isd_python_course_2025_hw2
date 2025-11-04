@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AccessToken(BaseModel):
@@ -12,11 +12,7 @@ class User(BaseModel):
 
     email: str
     name: str
-
-    class Config:
-        """ORM mode configuration."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(User):
