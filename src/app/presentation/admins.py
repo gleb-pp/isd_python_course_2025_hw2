@@ -43,7 +43,7 @@ async def get_all_users(
         raise HTTPException(status_code=403, detail=str(e)) from e
 
 
-@router.post("/users/")
+@router.post("/users")
 async def create_user(
     new_user: UserCreate,
     admin_email: Annotated[str, Depends(get_current_user)],
@@ -88,7 +88,7 @@ async def create_user(
         raise HTTPException(status_code=409, detail=str(e)) from e
 
 
-@router.delete("/users/{user_email}")
+@router.delete("/users/{deleted_user_email}")
 async def delete_user(
     deleted_user_email: str,
     admin_email: Annotated[str, Depends(get_current_user)],
