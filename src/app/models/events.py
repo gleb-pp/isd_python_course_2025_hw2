@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class EventID(BaseModel):
     """Unique identifier for an event."""
 
-    event_id: int
+    id: int
 
 
 class EventInfo(EventID):

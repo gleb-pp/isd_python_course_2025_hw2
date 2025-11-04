@@ -5,7 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 import src.app.exceptions.events as event_errors
-import src.app.logic.events
+import src.app.logic.events as events_logic
+import src.app.logic.users as user_logic
+import src.app.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
 from src.app.models.common import Success
@@ -39,11 +41,11 @@ async def create_event(
 
     Max number of participants is optional. If provided, it must be greater than 0.
     """
-    event_id = src.app.logic.events.create_event(
+    event = events_logic.create_event(
         title, date, location, user_email, description, max_participants, db, is_offline
     )
     db.commit()
-    return EventID(event_id=event_id)
+    return EventID.model_validate(event)
 
 
 @router.delete("/{event_id}")
@@ -56,10 +58,17 @@ async def delete_event(
 
     Event Organizator role for the provided event_id required.
     """
+
     try:
-        src.app.logic.events.delete_event(event_id, user_email, db)
+        user = user_logic.get_user(user_email, db)
+        event = events_logic.get_event(event_id, db)
+        events_logic.assert_user_is_organizer(event, user, db)
+        events_logic.delete_event(event, db)
         db.commit()
         return Success(success=True)
+    except user_errors.UserNotFoundError as e:
+        db.rollback()
+        raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
         db.rollback()
         raise HTTPException(status_code=404, detail=str(e)) from e
@@ -75,7 +84,7 @@ async def get_events_list(db: Annotated[Session, Depends(get_db)]) -> list[Event
     For each event, main information includes event ID, title, description, date,
     is_offline flag, location, organizer_email, and max_participants.
     """
-    events = src.app.logic.events.get_events_list(db)
+    events = events_logic.get_events_list(db)
     return [EventInfo.model_validate(event) for event in events]
 
 
@@ -90,7 +99,7 @@ async def get_event_info(
     is_offline flag, location, organizer_email, and max_participants.
     """
     try:
-        event = src.app.logic.events.get_event_info(event_id, db)
+        event = events_logic.get_event(event_id, db)
         return EventInfo.model_validate(event)
     except event_errors.EventNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

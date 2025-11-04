@@ -1,8 +1,9 @@
-from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordBearer
+from datetime import UTC, datetime
+
 from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from datetime import datetime, timezone
+from passlib.context import CryptContext
 
 JWT_SECRET_KEY = "1231232321"
 ALGORITHM = "HS256"
@@ -11,7 +12,10 @@ PWD_MIN_LENGTH = 8
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 pwd_hasher = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+
+def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
+    """Decode JWT token and return user email."""
+
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         expire_timestamp = payload.get("exp")
@@ -22,7 +26,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             raise ValueError("Invalid token structure")
 
         # checking token expiration time
-        if datetime.now(tz=timezone.utc) > datetime.fromtimestamp(expire_timestamp, tz=timezone.utc):
+        if datetime.now(tz=UTC) > datetime.fromtimestamp(
+            expire_timestamp, tz=UTC
+        ):
             raise ValueError("Token expired")
 
     except (JWTError, ValueError) as e:

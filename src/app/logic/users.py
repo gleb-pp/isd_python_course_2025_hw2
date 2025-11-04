@@ -15,27 +15,8 @@ from src.app.auth import (
 from src.app.repo.users import User
 
 
-def create_user(email: str, name: str, password: str, db: Session) -> None:
+def create_user(email: str, name: str, password: str, db: Session) -> User:
     """Create a new user with provided email, name, and password."""
-    # validation of email format
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    if not (
-        match(pattern, email)
-        and len(email) <= 254
-        and ".." not in email
-        and len(email.split("@")[0]) <= 64
-    ):
-        raise user_errors.EmailFormatError
-
-    # validation of username format
-    pattern = r"^[\p{L}0-9_ ]+$"
-    name = name.strip()
-    if not (match(pattern, name) and 1 <= len(name) <= 80):
-        raise user_errors.NameFormatError
-
-    # validation of password length
-    if len(password) < PWD_MIN_LENGTH:
-        raise user_errors.WeakPasswordError
 
     # checking whether such user exists
     if db.query(User).filter(User.email == email).first() is not None:
@@ -45,22 +26,78 @@ def create_user(email: str, name: str, password: str, db: Session) -> None:
     hashed_password = pwd_hasher.hash(password)
     user = User(email=email, name=name, password_hash=hashed_password)
     db.add(user)
+    db.flush()
+    return user
 
 
-def get_access_token(email: str, password: str, db: Session) -> str:
+def validate_user_email(email: str) -> None:
+    """Validate the format of the provided user email."""
+
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    if not (
+        match(pattern, email)
+        and len(email) <= 254
+        and ".." not in email
+        and len(email.split("@")[0]) <= 64
+    ):
+        raise user_errors.EmailFormatError
+
+
+def validate_user_name(name: str) -> None:
+    """Validate the format of the provided user name."""
+
+    pattern = r"^[\p{L}0-9_ ]+$"
+    name = name.strip()
+    if not (match(pattern, name) and 1 <= len(name) <= 80):
+        raise user_errors.NameFormatError
+
+
+def validate_password_lenght(password: str) -> None:
+    """Validate the length of the provided user password."""
+
+    if len(password) < PWD_MIN_LENGTH:
+        raise user_errors.WeakPasswordError
+
+
+def get_access_token(user: User) -> str:
     """Get JWT access token for user with provided email and password."""
-    # checking whether such user exists
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        raise user_errors.UserNotFoundError(email)
-
-    # checking password
-    if not pwd_hasher.verify(password, user.password_hash):
-        raise user_errors.InvalidPasswordError
 
     # giving access token
     data = {
-        "email": email,
+        "email": user.email,
         "exp": datetime.now(tz=UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(data, JWT_SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_all_users(db: Session) -> list[User]:
+    """Get the list of all users in the system."""
+
+    return db.query(User).all()
+
+
+def get_user(email: str, db: Session) -> User:
+    """Check whether a user with provided email exists in the system."""
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise user_errors.UserNotFoundError(email)
+    return user
+
+
+def assert_user_is_admin(user: User) -> None:
+    """Check whether the user with provided email has admin role."""
+
+    if not user.is_admin:
+        raise user_errors.AdminRoleRequiredError(user.email)
+
+
+def verify_password(user: User, password: str) -> None:
+    """Verify that the provided password is correct for the user with provided email."""
+
+    if not pwd_hasher.verify(password, user.password_hash):
+        raise user_errors.InvalidPasswordError
+
+def delete_user(user: User, db: Session) -> None:
+    """Delete the user from the database."""
+    db.delete(user)

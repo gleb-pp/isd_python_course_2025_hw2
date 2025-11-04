@@ -5,7 +5,10 @@ from sqlalchemy.orm import Session
 
 import src.app.exceptions.bookings as booking_errors
 import src.app.exceptions.events as event_errors
-import src.app.logic.bookings
+import src.app.logic.bookings as bookings_logic
+import src.app.logic.events as events_logic
+import src.app.logic.users as user_logic
+import src.app.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
 from src.app.models.bookings import EventParticipants
@@ -28,9 +31,15 @@ async def create_booking(
     Registration is only possible for events with available seats.
     """
     try:
-        src.app.logic.bookings.create_booking(event_id, user_email, db)
+        user = user_logic.get_user(user_email, db)
+        event = events_logic.get_event(event_id, db)
+        bookings_logic.assert_seats_available(event, db)
+        bookings_logic.create_booking(event, user, db)
         db.commit()
         return Success(success=True)
+    except user_errors.UserNotFoundError as e:
+        db.rollback()
+        raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -47,9 +56,14 @@ async def delete_booking(
 ) -> Success:
     """Unregister the user with provided email from the event with provided event_id."""
     try:
-        src.app.logic.bookings.delete_booking(event_id, user_email, db)
+        user = user_logic.get_user(user_email, db)
+        event = events_logic.get_event(event_id, db)
+        bookings_logic.delete_booking(event, user, db)
         db.commit()
         return Success(success=True)
+    except user_errors.UserNotFoundError as e:
+        db.rollback()
+        raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -66,10 +80,14 @@ async def get_event_participants(
     Event Organizator role for the provided event_id required.
     """
     try:
-        participants_emails = src.app.logic.bookings.get_event_participants(
-            event_id, user_email, db
-        )
-        return EventParticipants(participants_emails=participants_emails)
+        user = user_logic.get_user(user_email, db)
+        event = events_logic.get_event(event_id, db)
+        events_logic.assert_user_is_organizer(event, user, db)
+        participants_emails = bookings_logic.get_event_participants(event, db)
+        return EventParticipants.model_validate(participants_emails)
+    except user_errors.UserNotFoundError as e:
+        db.rollback()
+        raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except event_errors.OrginizatorRoleRequiredError as e:
