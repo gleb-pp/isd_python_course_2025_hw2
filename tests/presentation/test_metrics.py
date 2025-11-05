@@ -1,6 +1,7 @@
-from unittest.mock import MagicMock, patch
-import pytest
+from typing import Any, cast
+from unittest.mock import MagicMock, _patch, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 import src.app.exceptions.users as user_errors
@@ -33,7 +34,7 @@ def create_mock_user(**kwargs: object) -> MagicMock:
     return mock_user
 
 
-def setup_mocks(current_user_email="admin@inno.ru") -> MagicMock:
+def setup_mocks(current_user_email: str = "admin@inno.ru") -> MagicMock:
     """Set up common mocks for DB and current user."""
     mock_db = MagicMock()
     app.dependency_overrides[get_db] = lambda: mock_db
@@ -44,21 +45,57 @@ def setup_mocks(current_user_email="admin@inno.ru") -> MagicMock:
 def call_endpoint(
     url: str,
     *,
-    mock_get_user=None,
-    mock_assert_admin=None,
-    mock_get_events=None,
-    mock_get_all_users=None,
-    mock_get_registrations=None,
-    mock_get_user_bookings=None,
+    mock_get_user: dict[str, Any] | None = None,
+    mock_assert_admin: dict[str, Any] | None = None,
+    mock_get_events: dict[str, Any] | None = None,
+    mock_get_all_users: dict[str, Any] | None = None,
+    mock_get_registrations: dict[str, Any] | None = None,
+    mock_get_user_bookings: dict[str, Any] | None = None,
 ) -> tuple:
-    """Helper to perform GET request with all needed patches."""
+    """Help to perform GET request with all needed patches."""
     with (
-        patch("src.app.presentation.metrics.user_logic.get_user", **(mock_get_user or {})) as get_user,
-        patch("src.app.presentation.metrics.user_logic.assert_user_is_admin", **(mock_assert_admin or {})) as assert_admin,
-        patch("src.app.presentation.metrics.events_logic.get_events_list", **(mock_get_events or {})) as get_events,
-        patch("src.app.presentation.metrics.user_logic.get_all_users", **(mock_get_all_users or {})) as get_all_users,
-        patch("src.app.presentation.metrics.metrics_logic.get_event_registrations", **(mock_get_registrations or {})) as get_registrations,
-        patch("src.app.presentation.metrics.metrics_logic.get_user_bookings", **(mock_get_user_bookings or {})) as get_user_bookings,
+        cast(
+            "_patch[Any]",
+            patch(
+                "src.app.presentation.metrics.user_logic.get_user",
+                **(mock_get_user or {}),
+            ),
+        ) as get_user,
+        cast(
+            "_patch[Any]",
+            patch(
+                "src.app.presentation.metrics.user_logic.assert_user_is_admin",
+                **(mock_assert_admin or {}),
+            ),
+        ) as assert_admin,
+        cast(
+            "_patch[Any]",
+            patch(
+                "src.app.presentation.metrics.events_logic.get_events_list",
+                **(mock_get_events or {}),
+            ),
+        ) as get_events,
+        cast(
+            "_patch[Any]",
+            patch(
+                "src.app.presentation.metrics.user_logic.get_all_users",
+                **(mock_get_all_users or {}),
+            ),
+        ) as get_all_users,
+        cast(
+            "_patch[Any]",
+            patch(
+                "src.app.presentation.metrics.metrics_logic.get_event_registrations",
+                **(mock_get_registrations or {}),
+            ),
+        ) as get_regs,
+        cast(
+            "_patch[Any]",
+            patch(
+                "src.app.presentation.metrics.metrics_logic.get_user_bookings",
+                **(mock_get_user_bookings or {}),
+            ),
+        ) as get_bookings,
     ):
         response = client.get(url)
     return (
@@ -67,8 +104,8 @@ def call_endpoint(
         assert_admin,
         get_events,
         get_all_users,
-        get_registrations,
-        get_user_bookings,
+        get_regs,
+        get_bookings,
     )
 
 
@@ -84,12 +121,14 @@ def test__get_top_registrations_events__success() -> None:
     ]
     user_bookings = [10, 5, 8]
 
-    response, get_user, assert_admin, get_events, _, get_registrations, _ = call_endpoint(
-        "/admin/metrics/top_registrations?events_number=2",
-        mock_get_user={"return_value": mock_admin},
-        mock_assert_admin={},
-        mock_get_events={"return_value": mock_events},
-        mock_get_registrations={"side_effect": user_bookings},
+    response, get_user, assert_admin, get_events, _, get_registrations, _ = (
+        call_endpoint(
+            "/admin/metrics/top_registrations?events_number=2",
+            mock_get_user={"return_value": mock_admin},
+            mock_assert_admin={},
+            mock_get_events={"return_value": mock_events},
+            mock_get_registrations={"side_effect": user_bookings},
+        )
     )
 
     get_user.assert_called_once_with("admin@inno.ru", mock_db)
@@ -109,12 +148,16 @@ def test__get_top_registrations_events__random_user() -> None:
     """Attempt to get top registrations events from random email."""
     mock_db = setup_mocks()
 
-    response, get_user, assert_admin, get_events, _, get_registrations, _ = call_endpoint(
-        "/admin/metrics/top_registrations?events_number=2",
-        mock_get_user={"side_effect": user_errors.UserNotFoundError("admin@inno.ru")},
-        mock_assert_admin={},
-        mock_get_events={},
-        mock_get_registrations={},
+    response, get_user, assert_admin, get_events, _, get_registrations, _ = (
+        call_endpoint(
+            "/admin/metrics/top_registrations?events_number=2",
+            mock_get_user={
+                "side_effect": user_errors.UserNotFoundError("admin@inno.ru")
+            },
+            mock_assert_admin={},
+            mock_get_events={},
+            mock_get_registrations={},
+        )
     )
 
     get_user.assert_called_once_with("admin@inno.ru", mock_db)
@@ -129,10 +172,20 @@ def test__get_top_registrations_events__non_admin() -> None:
     mock_db = setup_mocks("user@inno.ru")
     mock_user = create_mock_user()
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, mock_get_registrations, _ = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        mock_get_events,
+        _,
+        mock_get_registrations,
+        _,
+    ) = call_endpoint(
         "/admin/metrics/top_registrations?events_number=2",
         mock_get_user={"return_value": mock_user},
-        mock_assert_admin={"side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")},
+        mock_assert_admin={
+            "side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")
+        },
         mock_get_events={},
         mock_get_registrations={},
     )
@@ -151,7 +204,15 @@ def test__get_average_registrations__success() -> None:
     mock_events = [create_mock_event(id=i) for i in range(3)]
     user_bookings = [10, 5, 8]
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, mock_get_registrations, _ = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        mock_get_events,
+        _,
+        mock_get_registrations,
+        _,
+    ) = call_endpoint(
         "/admin/metrics/average_registrations",
         mock_get_user={"return_value": mock_admin},
         mock_assert_admin={},
@@ -174,7 +235,15 @@ def test__get_average_registrations__no_events() -> None:
     mock_db = setup_mocks()
     mock_admin = create_mock_user()
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, mock_get_registrations, _ = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        mock_get_events,
+        _,
+        mock_get_registrations,
+        _,
+    ) = call_endpoint(
         "/admin/metrics/average_registrations",
         mock_get_user={"return_value": mock_admin},
         mock_assert_admin={},
@@ -194,7 +263,15 @@ def test__get_average_registrations__random_user() -> None:
     """Attempt to get average registrations from random email."""
     mock_db = setup_mocks()
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, mock_get_registrations, _ = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        mock_get_events,
+        _,
+        mock_get_registrations,
+        _,
+    ) = call_endpoint(
         "/admin/metrics/average_registrations",
         mock_get_user={"side_effect": user_errors.UserNotFoundError("admin@inno.ru")},
         mock_assert_admin={},
@@ -214,10 +291,20 @@ def test__get_average_registrations__non_admin() -> None:
     mock_db = setup_mocks("user@inno.ru")
     mock_admin = create_mock_user()
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, mock_get_registrations, _ = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        mock_get_events,
+        _,
+        mock_get_registrations,
+        _,
+    ) = call_endpoint(
         "/admin/metrics/average_registrations",
         mock_get_user={"return_value": mock_admin},
-        mock_assert_admin={"side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")},
+        mock_assert_admin={
+            "side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")
+        },
         mock_get_events={},
         mock_get_registrations={},
     )
@@ -236,12 +323,20 @@ def test__get_average_bookings_per_user__success() -> None:
     mock_users = [create_mock_user(email=f"user{i}@inno.ru") for i in range(3)]
     user_bookings = [3, 2, 5]
 
-    response, mock_get_user, mock_assert_admin, _, mock_get_all_users, _, mock_get_user_bookings = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        _,
+        mock_get_all_users,
+        _,
+        mock_get_user_bookings,
+    ) = call_endpoint(
         "/admin/metrics/average_bookings_per_user",
         mock_get_user={"return_value": mock_admin},
         mock_assert_admin={},
         mock_get_all_users={"return_value": mock_users},
-        mock_get_user_bookings={"side_effect": user_bookings}
+        mock_get_user_bookings={"side_effect": user_bookings},
     )
 
     mock_get_user.assert_called_once_with("admin@inno.ru", mock_db)
@@ -259,12 +354,20 @@ def test__get_average_bookings_per_user__no_users() -> None:
     mock_db = setup_mocks()
     mock_admin = create_mock_user()
 
-    response, mock_get_user, mock_assert_admin, _, mock_get_all_users, _, mock_get_user_bookings = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        _,
+        mock_get_all_users,
+        _,
+        mock_get_user_bookings,
+    ) = call_endpoint(
         "/admin/metrics/average_bookings_per_user",
         mock_get_user={"return_value": mock_admin},
         mock_assert_admin={},
         mock_get_all_users={"return_value": []},
-        mock_get_user_bookings={}
+        mock_get_user_bookings={},
     )
 
     mock_get_user.assert_called_once_with("admin@inno.ru", mock_db)
@@ -279,12 +382,20 @@ def test__get_average_bookings_per_user__random_user() -> None:
     """Attempt to get average bookings per user from random email."""
     mock_db = setup_mocks()
 
-    response, mock_get_user, mock_assert_admin, _, mock_get_all_users, _, mock_get_user_bookings = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        _,
+        mock_get_all_users,
+        _,
+        mock_get_user_bookings,
+    ) = call_endpoint(
         "/admin/metrics/average_bookings_per_user",
         mock_get_user={"side_effect": user_errors.UserNotFoundError("admin@inno.ru")},
         mock_assert_admin={},
         mock_get_all_users={},
-        mock_get_user_bookings={}
+        mock_get_user_bookings={},
     )
 
     mock_get_user.assert_called_once_with("admin@inno.ru", mock_db)
@@ -299,12 +410,22 @@ def test__get_average_bookings_per_user__non_admin() -> None:
     mock_db = setup_mocks("user@inno.ru")
     mock_admin = create_mock_user()
 
-    response, mock_get_user, mock_assert_admin, _, mock_get_all_users, _, mock_get_user_bookings = call_endpoint(
+    (
+        response,
+        mock_get_user,
+        mock_assert_admin,
+        _,
+        mock_get_all_users,
+        _,
+        mock_get_user_bookings,
+    ) = call_endpoint(
         "/admin/metrics/average_bookings_per_user",
         mock_get_user={"return_value": mock_admin},
-        mock_assert_admin={"side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")},
+        mock_assert_admin={
+            "side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")
+        },
         mock_get_all_users={},
-        mock_get_user_bookings={}
+        mock_get_user_bookings={},
     )
 
     mock_get_user.assert_called_once_with("user@inno.ru", mock_db)
@@ -317,22 +438,26 @@ def test__get_average_bookings_per_user__non_admin() -> None:
 @pytest.mark.parametrize(
     ("mock_events", "ratio"),
     [
-        ([create_mock_event(id=i, is_offline=(i%2==0)) for i in range(4)], 0.5),
+        ([create_mock_event(id=i, is_offline=(i % 2 == 0)) for i in range(4)], 0.5),
         ([create_mock_event(id=i, is_offline=True) for i in range(4)], 1.0),
         ([create_mock_event(id=i, is_offline=False) for i in range(4)], 0.0),
-        ([], 0.0)
+        ([], 0.0),
     ],
 )
-def test__get_offline_events_ratio__success(mock_events: list[MagicMock], ratio: float) -> None:
+def test__get_offline_events_ratio__success(
+    mock_events: list[MagicMock], ratio: float
+) -> None:
     """Test to get offline events ratio from admin account."""
     mock_db = setup_mocks()
     mock_admin = create_mock_user()
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, _, _ = call_endpoint(
-        "/admin/metrics/offline_ratio",
-        mock_get_user={"return_value": mock_admin},
-        mock_assert_admin={},
-        mock_get_events={"return_value": mock_events}
+    response, mock_get_user, mock_assert_admin, mock_get_events, _, _, _ = (
+        call_endpoint(
+            "/admin/metrics/offline_ratio",
+            mock_get_user={"return_value": mock_admin},
+            mock_assert_admin={},
+            mock_get_events={"return_value": mock_events},
+        )
     )
 
     mock_get_user.assert_called_once_with("admin@inno.ru", mock_db)
@@ -346,11 +471,15 @@ def test__get_offline_events_ratio__random_user() -> None:
     """Attempt to get offline events ratio from random email."""
     mock_db = setup_mocks()
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, _, _ = call_endpoint(
-        "/admin/metrics/offline_ratio",
-        mock_get_user={"side_effect": user_errors.UserNotFoundError("admin@inno.ru")},
-        mock_assert_admin={},
-        mock_get_events={}
+    response, mock_get_user, mock_assert_admin, mock_get_events, _, _, _ = (
+        call_endpoint(
+            "/admin/metrics/offline_ratio",
+            mock_get_user={
+                "side_effect": user_errors.UserNotFoundError("admin@inno.ru")
+            },
+            mock_assert_admin={},
+            mock_get_events={},
+        )
     )
 
     mock_get_user.assert_called_once_with("admin@inno.ru", mock_db)
@@ -364,11 +493,15 @@ def test__get_offline_events_ratio__non_admin() -> None:
     mock_db = setup_mocks("user@inno.ru")
     mock_user = create_mock_user()
 
-    response, mock_get_user, mock_assert_admin, mock_get_events, _, _, _ = call_endpoint(
-        "/admin/metrics/offline_ratio",
-        mock_get_user={"return_value": mock_user},
-        mock_assert_admin={"side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")},
-        mock_get_events={}
+    response, mock_get_user, mock_assert_admin, mock_get_events, _, _, _ = (
+        call_endpoint(
+            "/admin/metrics/offline_ratio",
+            mock_get_user={"return_value": mock_user},
+            mock_assert_admin={
+                "side_effect": user_errors.AdminRoleRequiredError("user@inno.ru")
+            },
+            mock_get_events={},
+        )
     )
 
     mock_get_user.assert_called_once_with("user@inno.ru", mock_db)
