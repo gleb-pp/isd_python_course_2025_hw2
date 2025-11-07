@@ -6,13 +6,7 @@ import src.app.domain.exceptions.bookings as booking_errors
 from src.app.infrastructure.db_models.bookings import BookingDB
 from src.app.infrastructure.db_models.events import EventDB
 from src.app.infrastructure.db_models.users import UserDB
-from src.app.logic.bookings import (
-    assert_seats_available,
-    create_booking,
-    delete_booking,
-    get_all_bookings,
-    get_event_participants,
-)
+from src.app.infrastructure.adapters.bookings_adapter import BookingsAdapter
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
@@ -39,140 +33,137 @@ def create_mock_booking(**kwargs: object) -> MagicMock:
     return mock_booking
 
 
-def test__create_booking__new_booking() -> None:
-    """Check new booking is created when user is not registered."""
-    mock_db = MagicMock()
-    mock_db.query().filter_by().first.return_value = None
+class TestBookingsAdapter:
+    """Test class for BookingsAdapter."""
 
-    event = create_mock_event(id=1)
-    user = create_mock_user(email="g.popov@inno.ru")
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.mock_db = MagicMock()
+        self.bookings_adapter = BookingsAdapter(self.mock_db)
 
-    with patch("src.app.logic.bookings.BookingDB") as mock_booking_cls:
-        mock_booking = create_mock_booking(event_id=event.id, user_email=user.email)
-        mock_booking_cls.return_value = mock_booking
-        create_booking(event, user, mock_db)
+    def test__create_booking__new_booking(self) -> None:
+        """Check new booking is created when user is not registered."""
+        self.mock_db.query().filter_by().first.return_value = None
 
-    mock_db.add.assert_called_once_with(mock_booking)
+        event = create_mock_event(id=1)
+        user = create_mock_user(email="g.popov@inno.ru")
 
+        with patch("src.app.infrastructure.adapters.bookings_adapter.BookingDB") as mock_booking_cls:
+            mock_booking = create_mock_booking(event_id=event.id, user_email=user.email)
+            mock_booking_cls.return_value = mock_booking
+            self.bookings_adapter.create_booking(event, user)
 
-def test__create_booking__already_exists() -> None:
-    """Check no new booking is created when user is already registered."""
-    mock_db = MagicMock()
-    existing_booking = create_mock_booking()
-    mock_db.query().filter_by().first.return_value = existing_booking
-
-    event = create_mock_event(id=1)
-    user = create_mock_user(email="g.popov@inno.ru")
-
-    create_booking(event, user, mock_db)
-
-    mock_db.add.assert_not_called()
+        self.mock_db.add.assert_called_once_with(mock_booking)
 
 
-def test__assert_seats_available__unlimited_seats() -> None:
-    """Check no error when event has no participant limit."""
-    mock_db = MagicMock()
-    event = create_mock_event(id=1, max_participants=None)
+    def test__create_booking__already_exists(self) -> None:
+        """Check no new booking is created when user is already registered."""
+        existing_booking = create_mock_booking()
+        self.mock_db.query().filter_by().first.return_value = existing_booking
 
-    assert_seats_available(event, mock_db)
+        event = create_mock_event(id=1)
+        user = create_mock_user(email="g.popov@inno.ru")
 
+        self.bookings_adapter.create_booking(event, user)
 
-def test__assert_seats_available__seats_available() -> None:
-    """Check no error when there are available seats."""
-    mock_db = MagicMock()
-    event = create_mock_event(id=1, max_participants=10)
-    mock_db.query().filter_by().count.return_value = 5
-    assert_seats_available(event, mock_db)
+        self.mock_db.add.assert_not_called()
 
 
-def test__assert_seats_available__event_full() -> None:
-    """Check EventFullError is raised when event is full."""
-    mock_db = MagicMock()
-    event = create_mock_event(id=1, max_participants=10)
-    mock_db.query().filter_by().count.return_value = 10
+    def test__assert_seats_available__unlimited_seats(self) -> None:
+        """Check no error when event has no participant limit."""
+        event = create_mock_event(id=1, max_participants=None)
 
-    with pytest.raises(booking_errors.EventFullError):
-        assert_seats_available(event, mock_db)
+        self.bookings_adapter.assert_seats_available(event)
 
 
-def test__delete_booking__exists() -> None:
-    """Check booking is deleted when it exists."""
-    mock_db = MagicMock()
-    booking = create_mock_booking()
-    mock_db.query().filter_by().first.return_value = booking
-
-    event = create_mock_event(id=1)
-    user = create_mock_user(email="g.popov@inno.ru")
-
-    delete_booking(event, user, mock_db)
-
-    mock_db.delete.assert_called_once_with(booking)
+    def test__assert_seats_available__seats_available(self) -> None:
+        """Check no error when there are available seats."""
+        event = create_mock_event(id=1, max_participants=10)
+        self.mock_db.query().filter_by().count.return_value = 5
+        self.bookings_adapter.assert_seats_available(event)
 
 
-def test__delete_booking__not_exists() -> None:
-    """Check no deletion when booking doesn't exist."""
-    mock_db = MagicMock()
-    mock_db.query().filter_by().first.return_value = None
+    def test__assert_seats_available__event_full(self) -> None:
+        """Check EventFullError is raised when event is full."""
+        event = create_mock_event(id=1, max_participants=10)
+        self.mock_db.query().filter_by().count.return_value = 10
 
-    event = create_mock_event(id=1)
-    user = create_mock_user(email="g.popov@inno.ru")
-
-    delete_booking(event, user, mock_db)
-
-    mock_db.delete.assert_not_called()
+        with pytest.raises(booking_errors.EventFullError):
+            self.bookings_adapter.assert_seats_available(event)
 
 
-def test__get_event_participants() -> None:
-    """Check list of participant emails is returned."""
-    mock_db = MagicMock()
-    event = create_mock_event(id=1)
+    def test__delete_booking__exists(self) -> None:
+        """Check booking is deleted when it exists."""
+        booking = create_mock_booking()
+        self.mock_db.query().filter_by().first.return_value = booking
 
-    mock_bookings = [
-        create_mock_booking(user_email="g.popov@inno.ru"),
-        create_mock_booking(user_email="a.popov@inno.ru"),
-        create_mock_booking(user_email="t.farizunov@inno.ru"),
-    ]
-    mock_db.query().filter_by().all.return_value = mock_bookings
+        event = create_mock_event(id=1)
+        user = create_mock_user(email="g.popov@inno.ru")
 
-    participants = get_event_participants(event, mock_db)
+        self.bookings_adapter.delete_booking(event, user)
 
-    expected_emails = ["g.popov@inno.ru", "a.popov@inno.ru", "t.farizunov@inno.ru"]
-    assert participants == expected_emails
+        self.mock_db.delete.assert_called_once_with(booking)
 
 
-def test__get_event_participants__empty() -> None:
-    """Check empty list is returned when no participants."""
-    mock_db = MagicMock()
-    event = create_mock_event(id=1)
-    mock_db.query().filter_by().all.return_value = []
+    def test__delete_booking__not_exists(self) -> None:
+        """Check no deletion when booking doesn't exist."""
+        self.mock_db.query().filter_by().first.return_value = None
 
-    participants = get_event_participants(event, mock_db)
+        event = create_mock_event(id=1)
+        user = create_mock_user(email="g.popov@inno.ru")
 
-    assert participants == []
+        self.bookings_adapter.delete_booking(event, user)
 
-
-def test__get_all_bookings() -> None:
-    """Check all bookings are returned."""
-    mock_db = MagicMock()
-    mock_bookings = [
-        create_mock_booking(id=1),
-        create_mock_booking(id=2),
-        create_mock_booking(id=3),
-    ]
-    mock_db.query().all.return_value = mock_bookings
-
-    bookings = get_all_bookings(mock_db)
-
-    mock_db.query().all.assert_called_once()
-    assert bookings == mock_bookings
+        self.mock_db.delete.assert_not_called()
 
 
-def test__get_all_bookings__empty() -> None:
-    """Check empty list is returned when no bookings."""
-    mock_db = MagicMock()
-    mock_db.query().all.return_value = []
+    def test__get_event_participants(self) -> None:
+        """Check list of participant emails is returned."""
+        event = create_mock_event(id=1)
 
-    bookings = get_all_bookings(mock_db)
+        mock_bookings = [
+            create_mock_booking(user_email="g.popov@inno.ru"),
+            create_mock_booking(user_email="a.popov@inno.ru"),
+            create_mock_booking(user_email="t.farizunov@inno.ru"),
+        ]
+        self.mock_db.query().filter_by().all.return_value = mock_bookings
 
-    mock_db.query().all.assert_called_once()
-    assert bookings == []
+        participants = self.bookings_adapter.get_event_participants(event)
+
+        expected_emails = ["g.popov@inno.ru", "a.popov@inno.ru", "t.farizunov@inno.ru"]
+        assert participants == expected_emails
+
+
+    def test__get_event_participants__empty(self) -> None:
+        """Check empty list is returned when no participants."""
+        event = create_mock_event(id=1)
+        self.mock_db.query().filter_by().all.return_value = []
+
+        participants = self.bookings_adapter.get_event_participants(event)
+
+        assert participants == []
+
+
+    def test__get_all_bookings(self) -> None:
+        """Check all bookings are returned."""
+        mock_bookings = [
+            create_mock_booking(id=1),
+            create_mock_booking(id=2),
+            create_mock_booking(id=3),
+        ]
+        self.mock_db.query().all.return_value = mock_bookings
+
+        bookings = self.bookings_adapter.get_all_bookings()
+
+        self.mock_db.query().all.assert_called_once()
+        assert bookings == mock_bookings
+
+
+    def test__get_all_bookings__empty(self) -> None:
+        """Check empty list is returned when no bookings."""
+        self.mock_db.query().all.return_value = []
+
+        bookings = self.bookings_adapter.get_all_bookings()
+
+        self.mock_db.query().all.assert_called_once()
+        assert bookings == []

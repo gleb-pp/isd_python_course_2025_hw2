@@ -6,11 +6,9 @@ from sqlalchemy.orm import Session
 import src.app.domain.exceptions.bookings as booking_errors
 import src.app.domain.exceptions.events as event_errors
 import src.app.domain.exceptions.users as user_errors
-import src.app.logic.bookings as bookings_logic
-import src.app.logic.events as events_logic
-import src.app.logic.users as user_logic
 from src.app.auth import get_current_user
 from src.app.db import get_db
+from src.app.services.bookings import BookingService
 from src.app.services.models.bookings import EventParticipants
 from src.app.services.models.common import Success
 
@@ -30,21 +28,14 @@ async def create_booking(
 
     Registration is only possible for events with available seats.
     """
+    service = BookingService(db)
     try:
-        user = user_logic.get_user(user_email, db)
-        event = events_logic.get_event(event_id, db)
-        bookings_logic.assert_seats_available(event, db)
-        bookings_logic.create_booking(event, user, db)
-        db.commit()
-        return Success(success=True)
+        return service.create_booking(event_id, user_email)
     except user_errors.UserNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
     except booking_errors.EventFullError as e:
-        db.rollback()
         raise HTTPException(status_code=409, detail=str(e)) from e
 
 
@@ -55,17 +46,12 @@ async def delete_booking(
     db: Annotated[Session, Depends(get_db)],
 ) -> Success:
     """Unregister the user with provided email from the event with provided event_id."""
+    service = BookingService(db)
     try:
-        user = user_logic.get_user(user_email, db)
-        event = events_logic.get_event(event_id, db)
-        bookings_logic.delete_booking(event, user, db)
-        db.commit()
-        return Success(success=True)
+        return service.delete_booking(event_id, user_email)
     except user_errors.UserNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
@@ -79,12 +65,9 @@ async def get_event_participants(
 
     Event Organizator role for the provided event_id required.
     """
+    service = BookingService(db)
     try:
-        user = user_logic.get_user(user_email, db)
-        event = events_logic.get_event(event_id, db)
-        events_logic.assert_user_is_organizer(event, user)
-        participants_emails = bookings_logic.get_event_participants(event, db)
-        return EventParticipants(participants_emails=participants_emails)
+        return service.get_event_participants(event_id, user_email)
     except user_errors.UserNotFoundError as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:

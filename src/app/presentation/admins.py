@@ -6,9 +6,7 @@ from sqlalchemy.orm import Session
 import src.app.domain.exceptions.bookings as booking_errors
 import src.app.domain.exceptions.events as event_errors
 import src.app.domain.exceptions.users as user_errors
-import src.app.logic.bookings as bookings_logic
-import src.app.logic.events as events_logic
-import src.app.logic.users as user_logic
+from src.app.services.admins import AdminService
 from src.app.auth import get_current_user
 from src.app.db import get_db
 from src.app.services.models.bookings import Booking, EventParticipants
@@ -32,11 +30,9 @@ async def get_all_users(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
-        users = user_logic.get_all_users(db)
-        return [User.model_validate(user) for user in users]
+        return service.get_all_users(admin_email)
     except user_errors.UserNotFoundError as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
     except user_errors.AdminRoleRequiredError as e:
@@ -61,30 +57,20 @@ async def create_user(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
-        user_logic.validate_user_email(new_user.email)
-        user_logic.validate_user_name(new_user.name)
-        user_logic.validate_password_lenght(new_user.password)
-        user_logic.create_user(new_user.email, new_user.name, new_user.password, db)
-        db.commit()
-        return Success(success=True)
+        return service.create_user(new_user, admin_email)
     except user_errors.UserNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e
     except user_errors.AdminRoleRequiredError as e:
-        db.rollback()
         raise HTTPException(status_code=403, detail=str(e)) from e
     except (
         user_errors.EmailFormatError,
         user_errors.NameFormatError,
         user_errors.WeakPasswordError,
     ) as e:
-        db.rollback()
         raise HTTPException(status_code=422, detail=str(e)) from e
     except user_errors.UserExistsError as e:
-        db.rollback()
         raise HTTPException(status_code=409, detail=str(e)) from e
 
 
@@ -104,22 +90,17 @@ async def delete_user(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
+        return service.delete_user(deleted_user_email, admin_email)
     except user_errors.UserNotFoundError as e:
-        raise HTTPException(status_code=401, detail=str(e)) from e
+        if e.email == admin_email:
+            raise HTTPException(status_code=401, detail=str(e)) from e
+        if e.email == deleted_user_email:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Unknown user was not found") from e
     except user_errors.AdminRoleRequiredError as e:
         raise HTTPException(status_code=403, detail=str(e)) from e
-
-    try:
-        deleted_user = user_logic.get_user(deleted_user_email, db)
-        user_logic.delete_user(deleted_user, db)
-        db.commit()
-        return Success(success=True)
-    except user_errors.UserNotFoundError as e:
-        db.rollback()
-        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/events/{event_id}")
@@ -132,21 +113,14 @@ async def delete_event(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
-        event = events_logic.get_event(event_id, db)
-        events_logic.delete_event(event, db)
-        db.commit()
-        return Success(success=True)
+        return service.delete_event(event_id, admin_email)
     except user_errors.UserNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e
     except user_errors.AdminRoleRequiredError as e:
-        db.rollback()
         raise HTTPException(status_code=403, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=404, detail=str(e)) from e
 
 
@@ -161,29 +135,20 @@ async def create_user_booking(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
+        return service.create_user_booking(event_id, guest_email, admin_email)
     except user_errors.UserNotFoundError as e:
-        raise HTTPException(status_code=401, detail=str(e)) from e
+        if e.email == admin_email:
+            raise HTTPException(status_code=401, detail=str(e)) from e
+        if e.email == guest_email:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Unknown user was not found") from e
     except user_errors.AdminRoleRequiredError as e:
         raise HTTPException(status_code=403, detail=str(e)) from e
-
-    try:
-        guest = user_logic.get_user(guest_email, db)
-        event = events_logic.get_event(event_id, db)
-        bookings_logic.assert_seats_available(event, db)
-        bookings_logic.create_booking(event, guest, db)
-        db.commit()
-        return Success(success=True)
-    except user_errors.UserNotFoundError as e:
-        db.rollback()
-        raise HTTPException(status_code=404, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
     except booking_errors.EventFullError as e:
-        db.rollback()
         raise HTTPException(status_code=409, detail=str(e)) from e
 
 
@@ -198,25 +163,18 @@ async def delete_user_booking(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
+        return service.delete_user_booking(event_id, guest_email, admin_email)
     except user_errors.UserNotFoundError as e:
-        raise HTTPException(status_code=401, detail=str(e)) from e
+        if e.email == admin_email:
+            raise HTTPException(status_code=401, detail=str(e)) from e
+        if e.email == guest_email:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Unknown user was not found") from e
     except user_errors.AdminRoleRequiredError as e:
         raise HTTPException(status_code=403, detail=str(e)) from e
-
-    try:
-        guest = user_logic.get_user(guest_email, db)
-        event = events_logic.get_event(event_id, db)
-        bookings_logic.delete_booking(event, guest, db)
-        db.commit()
-        return Success(success=True)
-    except user_errors.UserNotFoundError as e:
-        db.rollback()
-        raise HTTPException(status_code=404, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
@@ -230,20 +188,14 @@ async def get_event_participants(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
-        event = events_logic.get_event(event_id, db)
-        participants_emails = bookings_logic.get_event_participants(event, db)
-        return EventParticipants(participants_emails=participants_emails)
+        return service.get_event_participants(event_id, admin_email)
     except user_errors.UserNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e
     except user_errors.AdminRoleRequiredError as e:
-        db.rollback()
         raise HTTPException(status_code=403, detail=str(e)) from e
     except event_errors.EventNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
@@ -256,14 +208,10 @@ async def get_bookings(
 
     Admin role required.
     """
+    service = AdminService(db)
     try:
-        user = user_logic.get_user(admin_email, db)
-        user_logic.assert_user_is_admin(user)
-        bookings = bookings_logic.get_all_bookings(db)
-        return [Booking.model_validate(booking) for booking in bookings]
+        return service.get_bookings(admin_email)
     except user_errors.UserNotFoundError as e:
-        db.rollback()
         raise HTTPException(status_code=401, detail=str(e)) from e
     except user_errors.AdminRoleRequiredError as e:
-        db.rollback()
         raise HTTPException(status_code=403, detail=str(e)) from e

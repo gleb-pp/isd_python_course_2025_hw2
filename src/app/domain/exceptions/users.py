@@ -34,6 +34,7 @@ class UserNotFoundError(UserError):
     """Exception raised when a user is not found."""
 
     def __init__(self, email: str) -> None:
+        self.email = email
         super().__init__(f"User {email} does not exist.")
 
 

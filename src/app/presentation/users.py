@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import src.app.domain.exceptions.users as user_errors
-import src.app.logic.users as user_logic
 from src.app.db import get_db
 from src.app.services.models.users import AccessToken, UserCreate, UserLogin
+from src.app.services.users import UserService
 
 router = APIRouter(tags=["Users"])
 
@@ -27,23 +27,16 @@ async def register(
 
     Returns email and JWT access token for 30 minutes.
     """
+    service = UserService(db)
     try:
-        user_logic.validate_user_email(user.email)
-        user_logic.validate_user_name(user.name)
-        user_logic.validate_password_lenght(user.password)
-        user = user_logic.create_user(user.email, user.name, user.password, db)
-        token = user_logic.get_access_token(user)
-        db.commit()
-        return AccessToken(access_token=token)
+        return service.register(user)
     except (
         user_errors.EmailFormatError,
         user_errors.NameFormatError,
         user_errors.WeakPasswordError,
     ) as e:
-        db.rollback()
         raise HTTPException(status_code=422, detail=str(e)) from e
     except user_errors.UserExistsError as e:
-        db.rollback()
         raise HTTPException(status_code=409, detail=str(e)) from e
 
 
@@ -55,10 +48,8 @@ async def login(
 
     Returns email and JWT access token for 30 minutes.
     """
+    service = UserService(db)
     try:
-        system_user = user_logic.get_user(user.email, db)
-        user_logic.verify_password(system_user, user.password)
-        token = user_logic.get_access_token(system_user)
-        return AccessToken(access_token=token)
+        return service.login(user)
     except user_errors.UserError as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
