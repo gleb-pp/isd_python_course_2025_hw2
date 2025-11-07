@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 import src.app.presentation.admins
@@ -18,7 +21,8 @@ app.include_router(src.app.presentation.bookings.router)
 app.include_router(src.app.presentation.metrics.router)
 
 
-@app.on_event("startup")
-def startup_event() -> None:
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Create database tables on application startup."""
     create_tables()
+    yield
