@@ -4,14 +4,14 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-import src.app.exceptions.events as event_errors
-import src.app.exceptions.users as user_errors
+import src.app.domain.exceptions.events as event_errors
+import src.app.domain.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
+from src.app.infrastructure.db_models.events import EventDB
+from src.app.infrastructure.db_models.users import UserDB
 from src.app.main import app
-from src.app.models.events import EventBase
-from src.app.repo.events import Event
-from src.app.repo.users import User
+from src.app.services.models.events import EventBase
 
 client = TestClient(app)
 
@@ -30,16 +30,16 @@ def create_mock_event_base(**kwargs: object) -> MagicMock:
 
 
 def create_mock_event(**kwargs: object) -> MagicMock:
-    """Create a mock Event object for testing."""
-    mock_event = MagicMock(spec=Event)
+    """Create a mock EventDB object for testing."""
+    mock_event = MagicMock(spec=EventDB)
     for key, value in kwargs.items():
         setattr(mock_event, key, value)
     return mock_event
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
-    """Create a mock User object for testing."""
-    mock_user = MagicMock(spec=User)
+    """Create a mock UserDB object for testing."""
+    mock_user = MagicMock(spec=UserDB)
     for key, value in kwargs.items():
         setattr(mock_user, key, value)
     return mock_user

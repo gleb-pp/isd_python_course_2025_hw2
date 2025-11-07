@@ -3,16 +3,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-import src.app.exceptions.bookings as booking_errors
-import src.app.exceptions.events as event_errors
-import src.app.exceptions.users as user_errors
+import src.app.domain.exceptions.bookings as booking_errors
+import src.app.domain.exceptions.events as event_errors
+import src.app.domain.exceptions.users as user_errors
 import src.app.logic.bookings as bookings_logic
 import src.app.logic.events as events_logic
 import src.app.logic.users as user_logic
 from src.app.auth import get_current_user
 from src.app.db import get_db
-from src.app.models.bookings import EventParticipants
-from src.app.models.common import Success
+from src.app.services.models.bookings import EventParticipants
+from src.app.services.models.common import Success
 
 router = APIRouter(
     prefix="/bookings",

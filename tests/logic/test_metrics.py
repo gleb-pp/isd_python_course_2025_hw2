@@ -2,22 +2,22 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.app.infrastructure.db_models.events import EventDB
+from src.app.infrastructure.db_models.users import UserDB
 from src.app.logic.metrics import get_event_registrations, get_user_bookings
-from src.app.repo.events import Event
-from src.app.repo.users import User
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
-    """Create a mock User object for testing."""
-    mock_user = MagicMock(spec=User)
+    """Create a mock UserDB object for testing."""
+    mock_user = MagicMock(spec=UserDB)
     for key, value in kwargs.items():
         setattr(mock_user, key, value)
     return mock_user
 
 
 def create_mock_event(**kwargs: object) -> MagicMock:
-    """Create a mock Event object for testing."""
-    mock_event = MagicMock(spec=Event)
+    """Create a mock EventDB object for testing."""
+    mock_event = MagicMock(spec=EventDB)
     for key, value in kwargs.items():
         setattr(mock_event, key, value)
     return mock_event

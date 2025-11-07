@@ -4,22 +4,22 @@ from jose import jwt
 from regex import match
 from sqlalchemy.orm import Session
 
-import src.app.exceptions.users as user_errors
+import src.app.domain.exceptions.users as user_errors
 from src.app.auth import pwd_hasher
-from src.app.repo.users import User
+from src.app.infrastructure.db_models.users import UserDB
 from src.app.settings.auth import auth_settings
 from src.app.settings.user import user_settings
 
 
-def create_user(email: str, name: str, password: str, db: Session) -> User:
+def create_user(email: str, name: str, password: str, db: Session) -> UserDB:
     """Create a new user with provided email, name, and password."""
     # checking whether such user exists
-    if db.query(User).filter(User.email == email).first() is not None:
+    if db.query(UserDB).filter(UserDB.email == email).first() is not None:
         raise user_errors.UserExistsError(email)
 
     # hashing password
     hashed_password = pwd_hasher.hash(password)
-    user = User(email=email, name=name, password_hash=hashed_password)
+    user = UserDB(email=email, name=name, password_hash=hashed_password)
     db.add(user)
     db.flush()
     return user
@@ -56,7 +56,7 @@ def validate_password_lenght(password: str) -> None:
         raise user_errors.WeakPasswordError
 
 
-def get_access_token(user: User) -> str:
+def get_access_token(user: UserDB) -> str:
     """Get JWT access token for user with provided email and password."""
     # giving access token
     data = {
@@ -69,31 +69,31 @@ def get_access_token(user: User) -> str:
     )
 
 
-def get_all_users(db: Session) -> list[User]:
+def get_all_users(db: Session) -> list[UserDB]:
     """Get the list of all users in the system."""
-    return db.query(User).all()
+    return db.query(UserDB).all()
 
 
-def get_user(email: str, db: Session) -> User:
+def get_user(email: str, db: Session) -> UserDB:
     """Check whether a user with provided email exists in the system."""
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(UserDB).filter(UserDB.email == email).first()
     if not user:
         raise user_errors.UserNotFoundError(email)
     return user
 
 
-def assert_user_is_admin(user: User) -> None:
+def assert_user_is_admin(user: UserDB) -> None:
     """Check whether the user with provided email has admin role."""
     if not user.is_admin:
         raise user_errors.AdminRoleRequiredError(user.email)
 
 
-def verify_password(user: User, password: str) -> None:
+def verify_password(user: UserDB, password: str) -> None:
     """Verify that the provided password is correct for the user with provided email."""
     if not pwd_hasher.verify(password, user.password_hash):
         raise user_errors.InvalidPasswordError
 
 
-def delete_user(user: User, db: Session) -> None:
+def delete_user(user: UserDB, db: Session) -> None:
     """Delete the user from the database."""
     db.delete(user)

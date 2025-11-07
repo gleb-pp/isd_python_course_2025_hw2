@@ -1,10 +1,10 @@
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.app.repo.base import Base
+from src.app.infrastructure.db_models.base import Base
 
 
-class Booking(Base):
+class BookingDB(Base):
     """Database model for the bookings."""
 
     __tablename__ = "bookings"

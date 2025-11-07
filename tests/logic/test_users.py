@@ -4,9 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import src.app.exceptions.users as user_errors
-from src.app.settings.user import user_settings
-from src.app.auth import get_current_user
+import src.app.domain.exceptions.users as user_errors
+from src.app.infrastructure.db_models.users import UserDB
 from src.app.logic.users import (
     assert_user_is_admin,
     create_user,
@@ -19,12 +18,12 @@ from src.app.logic.users import (
     validate_user_name,
     verify_password,
 )
-from src.app.repo.users import User
+from src.app.settings.user import user_settings
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
-    """Create a mock User object for testing."""
-    mock_user = MagicMock(spec=User)
+    """Create a mock UserDB object for testing."""
+    mock_user = MagicMock(spec=UserDB)
     for key, value in kwargs.items():
         setattr(mock_user, key, value)
     return mock_user
@@ -43,7 +42,7 @@ def test__create_user__valid() -> None:
         patch(
             "src.app.logic.users.pwd_hasher.hash", return_value=hashed_password
         ) as mock_hash,
-        patch("src.app.logic.users.User", return_value=mock_user),
+        patch("src.app.logic.users.UserDB", return_value=mock_user),
     ):
         user = create_user("g.popov@inno.ru", "Gleb", "12345678", mock_db)
 

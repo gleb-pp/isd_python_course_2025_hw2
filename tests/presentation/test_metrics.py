@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, _patch, patch
 import pytest
 from fastapi.testclient import TestClient
 
-import src.app.exceptions.users as user_errors
+import src.app.domain.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
+from src.app.infrastructure.db_models.events import EventDB
+from src.app.infrastructure.db_models.users import UserDB
 from src.app.main import app
-from src.app.repo.events import Event
-from src.app.repo.users import User
 
 client = TestClient(app)
 
@@ -19,16 +19,16 @@ HTTP_403_FORBIDDEN = 403
 
 
 def create_mock_event(**kwargs: object) -> MagicMock:
-    """Create a mock Event object for testing."""
-    mock_event = MagicMock(spec=Event)
+    """Create a mock EventDB object for testing."""
+    mock_event = MagicMock(spec=EventDB)
     for key, value in kwargs.items():
         setattr(mock_event, key, value)
     return mock_event
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
-    """Create a mock User object for testing."""
-    mock_user = MagicMock(spec=User)
+    """Create a mock UserDB object for testing."""
+    mock_user = MagicMock(spec=UserDB)
     for key, value in kwargs.items():
         setattr(mock_user, key, value)
     return mock_user
@@ -115,9 +115,9 @@ def test__get_top_registrations_events__success() -> None:
 
     mock_admin = create_mock_user()
     mock_events = [
-        create_mock_event(id=1, title="Event 1"),
-        create_mock_event(id=2, title="Event 2"),
-        create_mock_event(id=3, title="Event 3"),
+        create_mock_event(id=1, title="EventDB 1"),
+        create_mock_event(id=2, title="EventDB 2"),
+        create_mock_event(id=3, title="EventDB 3"),
     ]
     user_bookings = [10, 5, 8]
 

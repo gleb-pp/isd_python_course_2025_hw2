@@ -3,7 +3,7 @@ from collections.abc import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.app.repo.base import Base
+from src.app.infrastructure.db_models.base import Base
 
 DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/events_db"
 engine = create_engine(DATABASE_URL, echo=True)

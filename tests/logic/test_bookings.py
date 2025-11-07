@@ -2,7 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import src.app.exceptions.bookings as booking_errors
+import src.app.domain.exceptions.bookings as booking_errors
+from src.app.infrastructure.db_models.bookings import BookingDB
+from src.app.infrastructure.db_models.events import EventDB
+from src.app.infrastructure.db_models.users import UserDB
 from src.app.logic.bookings import (
     assert_seats_available,
     create_booking,
@@ -10,30 +13,27 @@ from src.app.logic.bookings import (
     get_all_bookings,
     get_event_participants,
 )
-from src.app.repo.bookings import Booking
-from src.app.repo.events import Event
-from src.app.repo.users import User
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
-    """Create a mock User object for testing."""
-    mock_user = MagicMock(spec=User)
+    """Create a mock UserDB object for testing."""
+    mock_user = MagicMock(spec=UserDB)
     for key, value in kwargs.items():
         setattr(mock_user, key, value)
     return mock_user
 
 
 def create_mock_event(**kwargs: object) -> MagicMock:
-    """Create a mock Event object for testing."""
-    mock_event = MagicMock(spec=Event)
+    """Create a mock EventDB object for testing."""
+    mock_event = MagicMock(spec=EventDB)
     for key, value in kwargs.items():
         setattr(mock_event, key, value)
     return mock_event
 
 
 def create_mock_booking(**kwargs: object) -> MagicMock:
-    """Create a mock Booking object for testing."""
-    mock_booking = MagicMock(spec=Booking)
+    """Create a mock BookingDB object for testing."""
+    mock_booking = MagicMock(spec=BookingDB)
     for key, value in kwargs.items():
         setattr(mock_booking, key, value)
     return mock_booking
@@ -47,7 +47,7 @@ def test__create_booking__new_booking() -> None:
     event = create_mock_event(id=1)
     user = create_mock_user(email="g.popov@inno.ru")
 
-    with patch("src.app.logic.bookings.Booking") as mock_booking_cls:
+    with patch("src.app.logic.bookings.BookingDB") as mock_booking_cls:
         mock_booking = create_mock_booking(event_id=event.id, user_email=user.email)
         mock_booking_cls.return_value = mock_booking
         create_booking(event, user, mock_db)

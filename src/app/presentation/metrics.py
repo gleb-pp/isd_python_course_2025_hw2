@@ -3,13 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-import src.app.exceptions.users as user_errors
+import src.app.domain.exceptions.users as user_errors
 import src.app.logic.events as events_logic
 import src.app.logic.metrics as metrics_logic
 import src.app.logic.users as user_logic
 from src.app.auth import get_current_user
 from src.app.db import get_db
-from src.app.models.metrics import (
+from src.app.services.models.metrics import (
     AverageBookingsPerUser,
     AverageRegistrations,
     EventRegistrations,

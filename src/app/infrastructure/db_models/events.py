@@ -1,10 +1,10 @@
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.app.repo.base import Base
+from src.app.infrastructure.db_models.base import Base
 
 
-class Event(Base):
+class EventDB(Base):
     """Database model for the events."""
 
     __tablename__ = "events"

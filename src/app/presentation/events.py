@@ -3,14 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-import src.app.exceptions.events as event_errors
-import src.app.exceptions.users as user_errors
+import src.app.domain.exceptions.events as event_errors
+import src.app.domain.exceptions.users as user_errors
 import src.app.logic.events as events_logic
 import src.app.logic.users as user_logic
 from src.app.auth import get_current_user
 from src.app.db import get_db
-from src.app.models.common import Success
-from src.app.models.events import EventBase, EventID, EventInfo
+from src.app.services.models.common import Success
+from src.app.services.models.events import EventBase, EventID, EventInfo
 
 router = APIRouter(
     prefix="/events",

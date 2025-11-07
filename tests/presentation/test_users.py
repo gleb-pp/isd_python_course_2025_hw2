@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-import src.app.exceptions.users as user_errors
+import src.app.domain.exceptions.users as user_errors
 from src.app.db import get_db
+from src.app.infrastructure.db_models.users import UserDB
 from src.app.main import app
-from src.app.repo.users import User
 
 client = TestClient(app)
 
@@ -17,8 +17,8 @@ HTTP_401_UNAUTHORIZED = 401
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
-    """Create a mock User object for testing."""
-    mock_user = MagicMock(spec=User)
+    """Create a mock UserDB object for testing."""
+    mock_user = MagicMock(spec=UserDB)
     for key, value in kwargs.items():
         setattr(mock_user, key, value)
     return mock_user
