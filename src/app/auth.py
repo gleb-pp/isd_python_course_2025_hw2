@@ -1,21 +1,23 @@
 from datetime import UTC, datetime
-from secrets import token_hex
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from passlib.context import CryptContext
 
-JWT_SECRET_KEY = token_hex(32)
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+from src.app.settings.auth import auth_settings
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 pwd_hasher = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     """Decode JWT token and return user email."""
-    payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+    payload = jwt.decode(
+        token,
+        auth_settings.jwt_secret_key,
+        algorithms=[auth_settings.algorithm],
+    )
     expire_timestamp = payload.get("exp")
     user_email = payload.get("email")
 

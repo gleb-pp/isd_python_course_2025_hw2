@@ -5,20 +5,10 @@ from regex import match
 from sqlalchemy.orm import Session
 
 import src.app.exceptions.users as user_errors
-from src.app.auth import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    ALGORITHM,
-    JWT_SECRET_KEY,
-    pwd_hasher,
-)
-from src.app.constraints import (
-    MAX_EMAIL_LENGTH,
-    MAX_EMAIL_LOCAL_PART,
-    MAX_USER_NAME_LENGTH,
-    MIN_USER_NAME_LENGTH,
-    PWD_MIN_LENGTH,
-)
+from src.app.auth import pwd_hasher
 from src.app.repo.users import User
+from src.app.settings.auth import auth_settings
+from src.app.settings.user import user_settings
 
 
 def create_user(email: str, name: str, password: str, db: Session) -> User:
@@ -40,9 +30,9 @@ def validate_user_email(email: str) -> None:
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     if not (
         match(pattern, email)
-        and len(email) <= MAX_EMAIL_LENGTH
+        and len(email) <= user_settings.max_email_lenght
         and ".." not in email
-        and len(email.split("@")[0]) <= MAX_EMAIL_LOCAL_PART
+        and len(email.split("@")[0]) <= user_settings.max_email_local_part
     ):
         raise user_errors.EmailFormatError
 
@@ -53,14 +43,16 @@ def validate_user_name(name: str) -> None:
     name = name.strip()
     if not (
         match(pattern, name)
-        and MIN_USER_NAME_LENGTH <= len(name) <= MAX_USER_NAME_LENGTH
+        and user_settings.min_user_name_lenght
+        <= len(name)
+        <= user_settings.max_user_name_lenght
     ):
         raise user_errors.NameFormatError
 
 
 def validate_password_lenght(password: str) -> None:
     """Validate the length of the provided user password."""
-    if len(password) < PWD_MIN_LENGTH:
+    if len(password) < user_settings.pwd_min_lenght:
         raise user_errors.WeakPasswordError
 
 
@@ -69,9 +61,12 @@ def get_access_token(user: User) -> str:
     # giving access token
     data = {
         "email": user.email,
-        "exp": datetime.now(tz=UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        "exp": datetime.now(tz=UTC)
+        + timedelta(minutes=auth_settings.access_token_expire_minutes),
     }
-    return jwt.encode(data, JWT_SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        data, auth_settings.jwt_secret_key, algorithm=auth_settings.algorithm
+    )
 
 
 def get_all_users(db: Session) -> list[User]:

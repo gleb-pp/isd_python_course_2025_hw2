@@ -5,13 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import src.app.exceptions.users as user_errors
-from src.app.constraints import (
-    MAX_EMAIL_LENGTH,
-    MAX_EMAIL_LOCAL_PART,
-    MAX_USER_NAME_LENGTH,
-    MIN_USER_NAME_LENGTH,
-    PWD_MIN_LENGTH,
-)
+from src.app.settings.user import user_settings
+from src.app.auth import get_current_user
 from src.app.logic.users import (
     assert_user_is_admin,
     create_user,
@@ -73,8 +68,14 @@ def test__create_user__alread_exists() -> None:
         ("glebpopov.ru", user_errors.EmailFormatError),
         ("glebpopov", user_errors.EmailFormatError),
         ("g..popov@inno.ru", user_errors.EmailFormatError),
-        ("gv" * MAX_EMAIL_LOCAL_PART + "@inno.ru", user_errors.EmailFormatError),
-        ("g.popov@" + "i" * MAX_EMAIL_LENGTH + ".ru", user_errors.EmailFormatError),
+        (
+            "gv" * user_settings.max_email_local_part + "@inno.ru",
+            user_errors.EmailFormatError,
+        ),
+        (
+            "g.popov@" + "i" * user_settings.max_email_lenght + ".ru",
+            user_errors.EmailFormatError,
+        ),
     ],
 )
 def test__validate_user_email(
@@ -94,8 +95,8 @@ def test__validate_user_email(
         ("Gleb123", None),
         ("GlebPopov", None),
         ("Gleb&?#34", user_errors.NameFormatError),
-        ("G" * (MIN_USER_NAME_LENGTH - 1), user_errors.NameFormatError),
-        ("G" * (MAX_USER_NAME_LENGTH + 1), user_errors.NameFormatError),
+        ("G" * (user_settings.min_user_name_lenght - 1), user_errors.NameFormatError),
+        ("G" * (user_settings.max_user_name_lenght + 1), user_errors.NameFormatError),
     ],
 )
 def test__validate_user_name(
@@ -113,8 +114,8 @@ def test__validate_user_name(
     ("password", "expected_exception"),
     [
         ("", user_errors.WeakPasswordError),
-        ("G" * (PWD_MIN_LENGTH - 1), user_errors.WeakPasswordError),
-        ("G" * PWD_MIN_LENGTH, None),
+        ("G" * (user_settings.pwd_min_lenght - 1), user_errors.WeakPasswordError),
+        ("G" * user_settings.pwd_min_lenght, None),
     ],
 )
 def test__validate_password_lenght(
