@@ -32,7 +32,7 @@ class TestUserService:
     def test__register__success(self) -> None:
         """Test successful user registration."""
         user_data = UserCreate(
-            email="g.popov@inno.ru", name="Gleb", password="12345678"
+            email="g.popov@inno.ru", name="Gleb", password=token_hex(16)
         )
         mock_user = create_mock_user()
         mock_token = token_hex(32)
@@ -66,7 +66,7 @@ class TestUserService:
 
     def test__register__invalid_email(self) -> None:
         """Attempt to register an account with an invalid email."""
-        user_data = UserCreate(email="g.popov", name="Gleb", password="12345678")
+        user_data = UserCreate(email="g.popov", name="Gleb", password=token_hex(16))
 
         with (
             patch.object(
@@ -80,9 +80,9 @@ class TestUserService:
             ) as mock_validate_password,
             patch.object(UsersAdapter, "create_user") as mock_create_user,
             patch.object(UsersAdapter, "get_access_token") as mock_get_access_token,
+            pytest.raises(user_errors.EmailFormatError),
         ):
-            with pytest.raises(user_errors.EmailFormatError):
-                self.users_service.register(user_data)
+            self.users_service.register(user_data)
 
         mock_validate_email.assert_called_once_with(user_data.email)
         mock_validate_name.assert_not_called()
@@ -94,7 +94,7 @@ class TestUserService:
     def test__register__invalid_name(self) -> None:
         """Attempt to register an account with an invalid email."""
         user_data = UserCreate(
-            email="g.popov@inno.ru", name=("Gleb" * 21), password="12345678"
+            email="g.popov@inno.ru", name=("Gleb" * 21), password=token_hex(16)
         )
 
         with (
@@ -109,9 +109,9 @@ class TestUserService:
             ) as mock_validate_password,
             patch.object(UsersAdapter, "create_user") as mock_create_user,
             patch.object(UsersAdapter, "get_access_token") as mock_get_access_token,
+            pytest.raises(user_errors.NameFormatError),
         ):
-            with pytest.raises(user_errors.NameFormatError):
-                self.users_service.register(user_data)
+            self.users_service.register(user_data)
 
         mock_validate_email.assert_called_once_with(user_data.email)
         mock_validate_name.assert_called_once_with(user_data.name)
@@ -122,7 +122,7 @@ class TestUserService:
 
     def test__register__invalid_password(self) -> None:
         """Attempt to register an account with an invalid password."""
-        user_data = UserCreate(email="g.popov@inno.ru", name="Gleb", password="123")
+        user_data = UserCreate(email="g.popov@inno.ru", name="Gleb", password="")
 
         with (
             patch.object(UsersAdapter, "validate_user_email") as mock_validate_email,
@@ -134,9 +134,9 @@ class TestUserService:
             ) as mock_validate_password,
             patch.object(UsersAdapter, "create_user") as mock_create_user,
             patch.object(UsersAdapter, "get_access_token") as mock_get_access_token,
+            pytest.raises(user_errors.WeakPasswordError),
         ):
-            with pytest.raises(user_errors.WeakPasswordError):
-                self.users_service.register(user_data)
+            self.users_service.register(user_data)
 
         mock_validate_email.assert_called_once_with(user_data.email)
         mock_validate_name.assert_called_once_with(user_data.name)
@@ -148,7 +148,7 @@ class TestUserService:
     def test__register__user_exists(self) -> None:
         """Attempt to register an account that already exists."""
         user_data = UserCreate(
-            email="g.popov@inno.ru", name="Gleb", password="12345678"
+            email="g.popov@inno.ru", name="Gleb", password=token_hex(16)
         )
 
         with (
@@ -163,9 +163,9 @@ class TestUserService:
                 side_effect=user_errors.UserExistsError(user_data.email),
             ) as mock_create_user,
             patch.object(UsersAdapter, "get_access_token") as mock_get_access_token,
+            pytest.raises(user_errors.UserExistsError),
         ):
-            with pytest.raises(user_errors.UserExistsError):
-                self.users_service.register(user_data)
+            self.users_service.register(user_data)
 
         mock_validate_email.assert_called_once_with(user_data.email)
         mock_validate_name.assert_called_once_with(user_data.name)
@@ -180,7 +180,7 @@ class TestUserService:
 
     def test__login__success(self) -> None:
         """Test successful user login."""
-        user_data = UserLogin(email="g.popov@inno.ru", password="12345678")
+        user_data = UserLogin(email="g.popov@inno.ru", password=token_hex(16))
 
         mock_user = create_mock_user()
         mock_token = token_hex(32)
@@ -206,7 +206,7 @@ class TestUserService:
 
     def test__login__random_email(self) -> None:
         """Attempt to login with incorrect email."""
-        user_data = UserLogin(email="g.popov@inno.ru", password="12345678")
+        user_data = UserLogin(email="g.popov@inno.ru", password=token_hex(16))
 
         with (
             patch.object(
@@ -216,9 +216,9 @@ class TestUserService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "verify_password") as mock_verify_password,
             patch.object(UsersAdapter, "get_access_token") as mock_get_token,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.users_service.login(user_data)
+            self.users_service.login(user_data)
 
         mock_get_user.assert_called_once_with(user_data.email)
         mock_verify_password.assert_not_called()
@@ -226,7 +226,7 @@ class TestUserService:
 
     def test__login__wrong_password(self) -> None:
         """Attempt to login with the wrong password."""
-        user_data = UserLogin(email="g.popov@inno.ru", password="wrongpass")
+        user_data = UserLogin(email="g.popov@inno.ru", password=token_hex(16))
 
         mock_user = create_mock_user()
 
@@ -240,9 +240,9 @@ class TestUserService:
                 side_effect=user_errors.InvalidPasswordError,
             ) as mock_verify_password,
             patch.object(UsersAdapter, "get_access_token") as mock_get_token,
+            pytest.raises(user_errors.InvalidPasswordError),
         ):
-            with pytest.raises(user_errors.InvalidPasswordError):
-                self.users_service.login(user_data)
+            self.users_service.login(user_data)
 
         mock_get_user.assert_called_once_with(user_data.email)
         mock_verify_password.assert_called_once_with(mock_user, user_data.password)

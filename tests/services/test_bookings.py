@@ -1,20 +1,21 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import src.app.domain.exceptions.bookings as booking_errors
 import src.app.domain.exceptions.events as event_errors
 import src.app.domain.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
+from src.app.infrastructure.adapters.bookings_adapter import BookingsAdapter
+from src.app.infrastructure.adapters.events_adapter import EventsAdapter
+from src.app.infrastructure.adapters.users_adapter import UsersAdapter
 from src.app.infrastructure.db_models.events import EventDB
 from src.app.infrastructure.db_models.users import UserDB
 from src.app.main import app
 from src.app.services.bookings import BookingService
-from src.app.infrastructure.adapters.events_adapter import EventsAdapter
-from src.app.infrastructure.adapters.users_adapter import UsersAdapter
-from src.app.infrastructure.adapters.bookings_adapter import BookingsAdapter
-from src.app.services.models.common import Success
 from src.app.services.models.bookings import EventParticipants
-import pytest
+from src.app.services.models.common import Success
 
 
 def create_mock_event(**kwargs: object) -> MagicMock:
@@ -87,9 +88,9 @@ class TestBookingService:
                 BookingsAdapter, "assert_seats_available"
             ) as mock_assert_seats_available,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.booking_service.create_booking(1, "g.popov@inno.ru")
+            self.booking_service.create_booking(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_not_called()
@@ -112,9 +113,9 @@ class TestBookingService:
                 BookingsAdapter, "assert_seats_available"
             ) as mock_assert_seats_available,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.booking_service.create_booking(1, "g.popov@inno.ru")
+            self.booking_service.create_booking(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_called_once_with(1)
@@ -141,9 +142,9 @@ class TestBookingService:
                 side_effect=booking_errors.EventFullError(1),
             ) as mock_assert_seats_available,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(booking_errors.EventFullError),
         ):
-            with pytest.raises(booking_errors.EventFullError):
-                self.booking_service.create_booking(1, "g.popov@inno.ru")
+            self.booking_service.create_booking(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_called_once_with(1)
@@ -189,9 +190,9 @@ class TestBookingService:
             ) as mock_get_user,
             patch.object(EventsAdapter, "get_event") as mock_get_event,
             patch.object(BookingsAdapter, "delete_booking") as mock_delete_booking,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.booking_service.delete_booking(1, "g.popov@inno.ru")
+            self.booking_service.delete_booking(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_not_called()
@@ -210,9 +211,9 @@ class TestBookingService:
                 side_effect=event_errors.EventNotFoundError(1),
             ) as mock_get_event,
             patch.object(BookingsAdapter, "delete_booking") as mock_delete_booking,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.booking_service.delete_booking(1, "g.popov@inno.ru")
+            self.booking_service.delete_booking(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_called_once_with(1)
@@ -271,9 +272,9 @@ class TestBookingService:
             patch.object(
                 BookingsAdapter, "get_event_participants"
             ) as mock_get_event_participants,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.booking_service.get_event_participants(1, "g.popov@inno.ru")
+            self.booking_service.get_event_participants(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_not_called()
@@ -297,9 +298,9 @@ class TestBookingService:
             patch.object(
                 BookingsAdapter, "get_event_participants"
             ) as mock_get_event_participants,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.booking_service.get_event_participants(1, "g.popov@inno.ru")
+            self.booking_service.get_event_participants(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_called_once_with(1)
@@ -332,9 +333,9 @@ class TestBookingService:
             patch.object(
                 BookingsAdapter, "get_event_participants"
             ) as mock_get_event_participants,
+            pytest.raises(event_errors.OrginizatorRoleRequiredError),
         ):
-            with pytest.raises(event_errors.OrginizatorRoleRequiredError):
-                self.booking_service.get_event_participants(1, "g.popov@inno.ru")
+            self.booking_service.get_event_participants(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_called_once_with(1)

@@ -97,9 +97,9 @@ class TestEventService:
                 side_effect=user_errors.UserNotFoundError("g.popov@inno.ru"),
             ) as mock_create_user,
             patch.object(EventsAdapter, "create_event") as mock_create_event,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.event_service.create_event(event_base, "g.popov@inno.ru")
+            self.event_service.create_event(event_base, "g.popov@inno.ru")
 
         mock_create_user.assert_called_once_with("g.popov@inno.ru")
         mock_create_event.assert_not_called()
@@ -146,9 +146,9 @@ class TestEventService:
                 EventsAdapter, "assert_user_is_organizer"
             ) as mock_assert_organizer,
             patch.object(EventsAdapter, "delete_event") as mock_delete_event,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.event_service.delete_event(1, "g.popov@inno.ru")
+            self.event_service.delete_event(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_not_called()
@@ -169,9 +169,9 @@ class TestEventService:
                 EventsAdapter, "assert_user_is_organizer"
             ) as mock_assert_organizer,
             patch.object(EventsAdapter, "delete_event") as mock_delete_event,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.event_service.delete_event(1, "g.popov@inno.ru")
+            self.event_service.delete_event(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_called_once_with(1)
@@ -201,9 +201,9 @@ class TestEventService:
                 ),
             ) as mock_assert_organizer,
             patch.object(EventsAdapter, "delete_event") as mock_delete_event,
+            pytest.raises(event_errors.OrginizatorRoleRequiredError),
         ):
-            with pytest.raises(event_errors.OrginizatorRoleRequiredError):
-                self.event_service.delete_event(1, "g.popov@inno.ru")
+            self.event_service.delete_event(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_get_event.assert_called_once_with(1)
@@ -213,6 +213,7 @@ class TestEventService:
 
     def test__get_events_list(self) -> None:
         """Test to get the list of events."""
+        max_part = randint(10, 50)
         mock_events = [
             create_mock_event(
                 id=1,
@@ -222,7 +223,7 @@ class TestEventService:
                 is_offline=True,
                 location="Innopolis",
                 organizer_email="g.popov@inno.ru",
-                max_participants=60,
+                max_participants=max_part,
             ),
             create_mock_event(
                 id=2,
@@ -232,7 +233,7 @@ class TestEventService:
                 is_offline=True,
                 location="Innopolis",
                 organizer_email="g.popov@inno.ru",
-                max_participants=60,
+                max_participants=max_part,
             ),
         ]
 
@@ -250,22 +251,23 @@ class TestEventService:
         assert result[0].title == "Test"
         assert result[0].description == "Test"
         assert result[0].date == datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
-        assert result[0].is_offline == True
+        assert result[0].is_offline
         assert result[0].location == "Innopolis"
         assert result[0].organizer_email == "g.popov@inno.ru"
-        assert result[0].max_participants == 60
+        assert result[0].max_participants == max_part
 
-        assert result[1].id == 2
+        assert result[1].id == len(mock_events)
         assert result[1].title == "Test"
         assert result[1].description == "Test"
         assert result[1].date == datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
-        assert result[1].is_offline == True
+        assert result[1].is_offline
         assert result[1].location == "Innopolis"
         assert result[1].organizer_email == "g.popov@inno.ru"
-        assert result[1].max_participants == 60
+        assert result[1].max_participants == max_part
 
     def test__get_event_info__success(self) -> None:
         """Test to get the event info."""
+        max_part = randint(10, 50)
         mock_event = create_mock_event(
             id=1,
             title="Test",
@@ -274,7 +276,7 @@ class TestEventService:
             is_offline=True,
             location="Innopolis",
             organizer_email="g.popov@inno.ru",
-            max_participants=60,
+            max_participants=max_part,
         )
 
         with patch.object(
@@ -288,10 +290,10 @@ class TestEventService:
         assert result.title == "Test"
         assert result.description == "Test"
         assert result.date == datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
-        assert result.is_offline == True
+        assert result.is_offline
         assert result.location == "Innopolis"
         assert result.organizer_email == "g.popov@inno.ru"
-        assert result.max_participants == 60
+        assert result.max_participants == max_part
 
     def test__get_event_info__no_event(self) -> None:
         """Test to get the event info."""

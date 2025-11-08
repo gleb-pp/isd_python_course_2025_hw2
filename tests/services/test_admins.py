@@ -1,22 +1,24 @@
+from secrets import token_hex
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import src.app.domain.exceptions.bookings as booking_errors
 import src.app.domain.exceptions.events as event_errors
 import src.app.domain.exceptions.users as user_errors
 from src.app.auth import get_current_user
 from src.app.db import get_db
+from src.app.infrastructure.adapters.bookings_adapter import BookingsAdapter
+from src.app.infrastructure.adapters.events_adapter import EventsAdapter
+from src.app.infrastructure.adapters.users_adapter import UsersAdapter
 from src.app.infrastructure.db_models.bookings import BookingDB
 from src.app.infrastructure.db_models.events import EventDB
 from src.app.infrastructure.db_models.users import UserDB
-from src.app.infrastructure.adapters.users_adapter import UsersAdapter
-from src.app.infrastructure.adapters.events_adapter import EventsAdapter
-from src.app.infrastructure.adapters.bookings_adapter import BookingsAdapter
-from src.app.services.models.users import User, UserCreate
 from src.app.main import app
 from src.app.services.admins import AdminService
-import pytest
-from src.app.services.models.common import Success
 from src.app.services.models.bookings import Booking, EventParticipants
+from src.app.services.models.common import Success
+from src.app.services.models.users import User, UserCreate
 
 
 def create_mock_event(**kwargs: object) -> MagicMock:
@@ -98,9 +100,9 @@ class TestAdminService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(UsersAdapter, "get_all_users") as mock_get_all_users,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.get_all_users("g.popov@inno.ru")
+            self.admin_service.get_all_users("g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -122,9 +124,9 @@ class TestAdminService:
                 side_effect=user_errors.AdminRoleRequiredError("g.popov@inno.ru"),
             ) as mock_assert_admin,
             patch.object(UsersAdapter, "get_all_users") as mock_get_all_users,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.get_all_users("g.popov@inno.ru")
+            self.admin_service.get_all_users("g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -135,7 +137,7 @@ class TestAdminService:
         app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
         new_user = UserCreate(
-            email="a.popov@inno.ru", name="Arthur", password="12345678"
+            email="a.popov@inno.ru", name="Arthur", password=token_hex(16)
         )
         mock_user = create_mock_user()
 
@@ -173,7 +175,7 @@ class TestAdminService:
         app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
         new_user = UserCreate(
-            email="a.popov@inno.ru", name="Arthur", password="12345678"
+            email="a.popov@inno.ru", name="Arthur", password=token_hex(16)
         )
 
         with (
@@ -191,9 +193,9 @@ class TestAdminService:
                 UsersAdapter, "validate_password_lenght"
             ) as mock_validate_password_lenght,
             patch.object(UsersAdapter, "create_user") as mock_create_user,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.create_user(new_user, "g.popov@inno.ru")
+            self.admin_service.create_user(new_user, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -208,7 +210,7 @@ class TestAdminService:
         app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
         new_user = UserCreate(
-            email="a.popov@inno.ru", name="Arthur", password="12345678"
+            email="a.popov@inno.ru", name="Arthur", password=token_hex(16)
         )
         mock_user = create_mock_user()
 
@@ -231,9 +233,9 @@ class TestAdminService:
             patch.object(
                 UsersAdapter, "create_user", return_value=mock_user
             ) as mock_create_user,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.create_user(new_user, "g.popov@inno.ru")
+            self.admin_service.create_user(new_user, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -247,7 +249,7 @@ class TestAdminService:
         """Attempt to create user with invalid email from admin account."""
         app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
-        new_user = UserCreate(email="a.popov", name="Arthur", password="12345678")
+        new_user = UserCreate(email="a.popov", name="Arthur", password=token_hex(16))
         mock_user = create_mock_user()
 
         with (
@@ -267,9 +269,9 @@ class TestAdminService:
             patch.object(
                 UsersAdapter, "create_user", return_value=mock_user
             ) as mock_create_user,
+            pytest.raises(user_errors.EmailFormatError),
         ):
-            with pytest.raises(user_errors.EmailFormatError):
-                self.admin_service.create_user(new_user, "g.popov@inno.ru")
+            self.admin_service.create_user(new_user, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -283,7 +285,7 @@ class TestAdminService:
         """Attempt to create user with invalid name from admin account."""
         app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
-        new_user = UserCreate(email="a.popov@inno.ru", name="", password="12345678")
+        new_user = UserCreate(email="a.popov@inno.ru", name="", password=token_hex(16))
         mock_user = create_mock_user()
 
         with (
@@ -305,9 +307,9 @@ class TestAdminService:
             patch.object(
                 UsersAdapter, "create_user", return_value=mock_user
             ) as mock_create_user,
+            pytest.raises(user_errors.NameFormatError),
         ):
-            with pytest.raises(user_errors.NameFormatError):
-                self.admin_service.create_user(new_user, "g.popov@inno.ru")
+            self.admin_service.create_user(new_user, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -321,7 +323,7 @@ class TestAdminService:
         """Attempt to create user with too short password from admin account."""
         app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
-        new_user = UserCreate(email="a.popov@inno.ru", name="Arthur", password="123")
+        new_user = UserCreate(email="a.popov@inno.ru", name="Arthur", password="")
         mock_user = create_mock_user()
 
         with (
@@ -341,9 +343,9 @@ class TestAdminService:
             patch.object(
                 UsersAdapter, "create_user", return_value=mock_user
             ) as mock_create_user,
+            pytest.raises(user_errors.WeakPasswordError),
         ):
-            with pytest.raises(user_errors.WeakPasswordError):
-                self.admin_service.create_user(new_user, "g.popov@inno.ru")
+            self.admin_service.create_user(new_user, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -357,7 +359,9 @@ class TestAdminService:
         """Attempt to create a user that already exists from admin account."""
         app.dependency_overrides[get_current_user] = lambda: "g.popov@inno.ru"
 
-        new_user = UserCreate(email="g.popov@inno.ru", name="Gleb", password="12345678")
+        new_user = UserCreate(
+            email="g.popov@inno.ru", name="Gleb", password=token_hex(16)
+        )
         mock_user = create_mock_user()
 
         with (
@@ -377,9 +381,9 @@ class TestAdminService:
                 "create_user",
                 side_effect=user_errors.UserExistsError(new_user.email),
             ) as mock_create_user,
+            pytest.raises(user_errors.UserExistsError),
         ):
-            with pytest.raises(user_errors.UserExistsError):
-                self.admin_service.create_user(new_user, "g.popov@inno.ru")
+            self.admin_service.create_user(new_user, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -431,9 +435,9 @@ class TestAdminService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(UsersAdapter, "delete_user") as mock_delete_user,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.delete_user("a.popov@inno.ru", "g.popov@inno.ru")
+            self.admin_service.delete_user("a.popov@inno.ru", "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -455,9 +459,9 @@ class TestAdminService:
                 side_effect=user_errors.AdminRoleRequiredError("g.popov@inno.ru"),
             ) as mock_assert_admin,
             patch.object(UsersAdapter, "delete_user") as mock_delete_user,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.delete_user("a.popov@inno.ru", "g.popov@inno.ru")
+            self.admin_service.delete_user("a.popov@inno.ru", "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_admin)
@@ -480,9 +484,9 @@ class TestAdminService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(UsersAdapter, "delete_user") as mock_delete_user,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.delete_user("a.popov@inno.ru", "g.popov@inno.ru")
+            self.admin_service.delete_user("a.popov@inno.ru", "g.popov@inno.ru")
 
         assert mock_get_user.call_count == 1 + 1
         mock_get_user.assert_any_call("g.popov@inno.ru")
@@ -531,9 +535,9 @@ class TestAdminService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(EventsAdapter, "get_event") as mock_get_event,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.delete_event(1, "g.popov@inno.ru")
+            self.admin_service.delete_event(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -556,9 +560,9 @@ class TestAdminService:
                 side_effect=user_errors.AdminRoleRequiredError("g.popov@inno.ru"),
             ) as mock_assert_admin,
             patch.object(EventsAdapter, "get_event") as mock_get_event,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.delete_event(1, "g.popov@inno.ru")
+            self.admin_service.delete_event(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_admin)
@@ -581,9 +585,9 @@ class TestAdminService:
                 "get_event",
                 side_effect=event_errors.EventNotFoundError(1),
             ) as mock_get_event,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.admin_service.delete_event(1, "g.popov@inno.ru")
+            self.admin_service.delete_event(1, "g.popov@inno.ru")
 
         mock_get_user.assert_called_once_with("g.popov@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_admin)
@@ -645,11 +649,9 @@ class TestAdminService:
                 BookingsAdapter, "assert_seats_available"
             ) as mock_assert_seats,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.create_user_booking(
-                    5, "guest@inno.ru", "admin@inno.ru"
-                )
+            self.admin_service.create_user_booking(5, "guest@inno.ru", "admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -677,11 +679,9 @@ class TestAdminService:
                 BookingsAdapter, "assert_seats_available"
             ) as mock_assert_seats,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.create_user_booking(
-                    5, "guest@inno.ru", "user@inno.ru"
-                )
+            self.admin_service.create_user_booking(5, "guest@inno.ru", "user@inno.ru")
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -710,11 +710,9 @@ class TestAdminService:
                 BookingsAdapter, "assert_seats_available"
             ) as mock_assert_seats,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.create_user_booking(
-                    5, "guest@inno.ru", "admin@inno.ru"
-                )
+            self.admin_service.create_user_booking(5, "guest@inno.ru", "admin@inno.ru")
 
         assert mock_get_user.call_count == 1 + 1
         mock_get_user.assert_any_call("guest@inno.ru")
@@ -748,11 +746,9 @@ class TestAdminService:
                 BookingsAdapter, "assert_seats_available"
             ) as mock_assert_seats,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.admin_service.create_user_booking(
-                    5, "guest@inno.ru", "admin@inno.ru"
-                )
+            self.admin_service.create_user_booking(5, "guest@inno.ru", "admin@inno.ru")
 
         assert mock_get_user.call_count == 1 + 1
         mock_get_user.assert_any_call("guest@inno.ru")
@@ -789,11 +785,9 @@ class TestAdminService:
                 side_effect=booking_errors.EventFullError(5),
             ) as mock_assert_seats,
             patch.object(BookingsAdapter, "create_booking") as mock_create_booking,
+            pytest.raises(booking_errors.EventFullError),
         ):
-            with pytest.raises(booking_errors.EventFullError):
-                self.admin_service.create_user_booking(
-                    5, "guest@inno.ru", "admin@inno.ru"
-                )
+            self.admin_service.create_user_booking(5, "guest@inno.ru", "admin@inno.ru")
 
         assert mock_get_user.call_count == 1 + 1
         mock_get_user.assert_any_call("guest@inno.ru")
@@ -852,11 +846,9 @@ class TestAdminService:
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(EventsAdapter, "get_event") as mock_get_event,
             patch.object(BookingsAdapter, "delete_booking") as mock_delete_booking,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.delete_user_booking(
-                    5, "guest@inno.ru", "admin@inno.ru"
-                )
+            self.admin_service.delete_user_booking(5, "guest@inno.ru", "admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -880,11 +872,9 @@ class TestAdminService:
             ) as mock_assert_admin,
             patch.object(EventsAdapter, "get_event") as mock_get_event,
             patch.object(BookingsAdapter, "delete_booking") as mock_delete_booking,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.delete_user_booking(
-                    5, "guest@inno.ru", "user@inno.ru"
-                )
+            self.admin_service.delete_user_booking(5, "guest@inno.ru", "user@inno.ru")
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -909,11 +899,9 @@ class TestAdminService:
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(EventsAdapter, "get_event") as mock_get_event,
             patch.object(BookingsAdapter, "delete_booking") as mock_delete_booking,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.delete_user_booking(
-                    5, "guest@inno.ru", "admin@inno.ru"
-                )
+            self.admin_service.delete_user_booking(5, "guest@inno.ru", "admin@inno.ru")
 
         assert mock_get_user.call_count == 1 + 1
         mock_get_user.assert_any_call("admin@inno.ru")
@@ -943,11 +931,9 @@ class TestAdminService:
                 side_effect=event_errors.EventNotFoundError(5),
             ) as mock_get_event,
             patch.object(BookingsAdapter, "delete_booking") as mock_delete_booking,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.admin_service.delete_user_booking(
-                    5, "guest@inno.ru", "admin@inno.ru"
-                )
+            self.admin_service.delete_user_booking(5, "guest@inno.ru", "admin@inno.ru")
 
         assert mock_get_user.call_count == 1 + 1
         mock_get_user.assert_any_call("admin@inno.ru")
@@ -1005,9 +991,9 @@ class TestAdminService:
             patch.object(
                 BookingsAdapter, "get_event_participants"
             ) as mock_get_participants,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.get_event_participants(5, "admin@inno.ru")
+            self.admin_service.get_event_participants(5, "admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -1033,9 +1019,9 @@ class TestAdminService:
             patch.object(
                 BookingsAdapter, "get_event_participants"
             ) as mock_get_participants,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.get_event_participants(5, "user@inno.ru")
+            self.admin_service.get_event_participants(5, "user@inno.ru")
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -1061,9 +1047,9 @@ class TestAdminService:
             patch.object(
                 BookingsAdapter, "get_event_participants"
             ) as mock_get_participants,
+            pytest.raises(event_errors.EventNotFoundError),
         ):
-            with pytest.raises(event_errors.EventNotFoundError):
-                self.admin_service.get_event_participants(5, "admin@inno.ru")
+            self.admin_service.get_event_participants(5, "admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_admin)
@@ -1101,7 +1087,7 @@ class TestAdminService:
         assert all(isinstance(event, Booking) for event in result)
         assert len(result) == len(mock_bookings)
         assert result[0].event_id == 1
-        assert result[1].event_id == 2
+        assert result[1].event_id == 1 + 1
         assert result[2].event_id == 1
         assert result[0].user_email == "user1@inno.ru"
         assert result[1].user_email == "user2@inno.ru"
@@ -1119,9 +1105,9 @@ class TestAdminService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(BookingsAdapter, "get_all_bookings") as mock_get_all_bookings,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.admin_service.get_bookings("admin@inno.ru")
+            self.admin_service.get_bookings("admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -1143,9 +1129,9 @@ class TestAdminService:
                 side_effect=user_errors.AdminRoleRequiredError("user@inno.ru"),
             ) as mock_assert_admin,
             patch.object(BookingsAdapter, "get_all_bookings") as mock_get_all_bookings,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.admin_service.get_bookings("user@inno.ru")
+            self.admin_service.get_bookings("user@inno.ru")
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)

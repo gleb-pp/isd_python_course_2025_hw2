@@ -82,11 +82,11 @@ class TestMetricsService:
         mock_get_events.assert_called_once_with()
         assert mock_get_registrations.call_count == len(mock_events)
         assert isinstance(result, TopRegistrationsMetric)
-        assert len(result.events) == 2
+        assert len(result.events) == 1 + 1
         assert result.events[0].event_id == 1
-        assert result.events[1].event_id == 3
-        assert result.events[0].registrations == 10
-        assert result.events[1].registrations == 8
+        assert result.events[1].event_id == 1 + 1 + 1
+        assert result.events[0].registrations == user_bookings[0]
+        assert result.events[1].registrations == user_bookings[2]
 
     def test__get_top_registrations_events__random_user(self) -> None:
         """Attempt to get top registrations events from random email."""
@@ -100,9 +100,9 @@ class TestMetricsService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(EventsAdapter, "get_events_list") as mock_get_events,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.metrics_service.get_top_registrations_events("admin@inno.ru", 2)
+            self.metrics_service.get_top_registrations_events("admin@inno.ru", 2)
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -124,9 +124,9 @@ class TestMetricsService:
                 side_effect=user_errors.AdminRoleRequiredError("user@inno.ru"),
             ) as mock_assert_admin,
             patch.object(EventsAdapter, "get_events_list") as mock_get_events,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.metrics_service.get_top_registrations_events("user@inno.ru", 2)
+            self.metrics_service.get_top_registrations_events("user@inno.ru", 2)
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
@@ -204,9 +204,9 @@ class TestMetricsService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(EventsAdapter, "get_events_list") as mock_get_events,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.metrics_service.get_average_registrations("admin@inno.ru")
+            self.metrics_service.get_average_registrations("admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -228,9 +228,9 @@ class TestMetricsService:
                 side_effect=user_errors.AdminRoleRequiredError("user@inno.ru"),
             ) as mock_assert_admin,
             patch.object(EventsAdapter, "get_events_list") as mock_get_events,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.metrics_service.get_average_registrations("user@inno.ru")
+            self.metrics_service.get_average_registrations("user@inno.ru")
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_admin)
@@ -313,9 +313,9 @@ class TestMetricsService:
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(UsersAdapter, "get_all_users") as mock_get_all_users,
             patch.object(MetricsAdapter, "get_user_bookings") as mock_get_user_bookings,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.metrics_service.get_average_bookings_per_user("admin@inno.ru")
+            self.metrics_service.get_average_bookings_per_user("admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -339,9 +339,9 @@ class TestMetricsService:
             ) as mock_assert_admin,
             patch.object(UsersAdapter, "get_all_users") as mock_get_all_users,
             patch.object(MetricsAdapter, "get_user_bookings") as mock_get_user_bookings,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.metrics_service.get_average_bookings_per_user("user@inno.ru")
+            self.metrics_service.get_average_bookings_per_user("user@inno.ru")
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_admin)
@@ -396,9 +396,9 @@ class TestMetricsService:
             ) as mock_get_user,
             patch.object(UsersAdapter, "assert_user_is_admin") as mock_assert_admin,
             patch.object(EventsAdapter, "get_events_list") as mock_get_events,
+            pytest.raises(user_errors.UserNotFoundError),
         ):
-            with pytest.raises(user_errors.UserNotFoundError):
-                self.metrics_service.get_offline_events_ratio("admin@inno.ru")
+            self.metrics_service.get_offline_events_ratio("admin@inno.ru")
 
         mock_get_user.assert_called_once_with("admin@inno.ru")
         mock_assert_admin.assert_not_called()
@@ -420,9 +420,9 @@ class TestMetricsService:
                 side_effect=user_errors.AdminRoleRequiredError("user@inno.ru"),
             ) as mock_assert_admin,
             patch.object(EventsAdapter, "get_events_list") as mock_get_events,
+            pytest.raises(user_errors.AdminRoleRequiredError),
         ):
-            with pytest.raises(user_errors.AdminRoleRequiredError):
-                self.metrics_service.get_offline_events_ratio("user@inno.ru")
+            self.metrics_service.get_offline_events_ratio("user@inno.ru")
 
         mock_get_user.assert_called_once_with("user@inno.ru")
         mock_assert_admin.assert_called_once_with(mock_user)
