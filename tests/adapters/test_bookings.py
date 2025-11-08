@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import src.app.domain.exceptions.bookings as booking_errors
+from src.app.infrastructure.adapters.bookings_adapter import BookingsAdapter
 from src.app.infrastructure.db_models.bookings import BookingDB
 from src.app.infrastructure.db_models.events import EventDB
 from src.app.infrastructure.db_models.users import UserDB
-from src.app.infrastructure.adapters.bookings_adapter import BookingsAdapter
 
 
 def create_mock_user(**kwargs: object) -> MagicMock:
@@ -48,13 +48,14 @@ class TestBookingsAdapter:
         event = create_mock_event(id=1)
         user = create_mock_user(email="g.popov@inno.ru")
 
-        with patch("src.app.infrastructure.adapters.bookings_adapter.BookingDB") as mock_booking_cls:
+        with patch(
+            "src.app.infrastructure.adapters.bookings_adapter.BookingDB"
+        ) as mock_booking_cls:
             mock_booking = create_mock_booking(event_id=event.id, user_email=user.email)
             mock_booking_cls.return_value = mock_booking
             self.bookings_adapter.create_booking(event, user)
 
         self.mock_db.add.assert_called_once_with(mock_booking)
-
 
     def test__create_booking__already_exists(self) -> None:
         """Check no new booking is created when user is already registered."""
@@ -68,20 +69,17 @@ class TestBookingsAdapter:
 
         self.mock_db.add.assert_not_called()
 
-
     def test__assert_seats_available__unlimited_seats(self) -> None:
         """Check no error when event has no participant limit."""
         event = create_mock_event(id=1, max_participants=None)
 
         self.bookings_adapter.assert_seats_available(event)
 
-
     def test__assert_seats_available__seats_available(self) -> None:
         """Check no error when there are available seats."""
         event = create_mock_event(id=1, max_participants=10)
         self.mock_db.query().filter_by().count.return_value = 5
         self.bookings_adapter.assert_seats_available(event)
-
 
     def test__assert_seats_available__event_full(self) -> None:
         """Check EventFullError is raised when event is full."""
@@ -90,7 +88,6 @@ class TestBookingsAdapter:
 
         with pytest.raises(booking_errors.EventFullError):
             self.bookings_adapter.assert_seats_available(event)
-
 
     def test__delete_booking__exists(self) -> None:
         """Check booking is deleted when it exists."""
@@ -104,7 +101,6 @@ class TestBookingsAdapter:
 
         self.mock_db.delete.assert_called_once_with(booking)
 
-
     def test__delete_booking__not_exists(self) -> None:
         """Check no deletion when booking doesn't exist."""
         self.mock_db.query().filter_by().first.return_value = None
@@ -115,7 +111,6 @@ class TestBookingsAdapter:
         self.bookings_adapter.delete_booking(event, user)
 
         self.mock_db.delete.assert_not_called()
-
 
     def test__get_event_participants(self) -> None:
         """Check list of participant emails is returned."""
@@ -133,7 +128,6 @@ class TestBookingsAdapter:
         expected_emails = ["g.popov@inno.ru", "a.popov@inno.ru", "t.farizunov@inno.ru"]
         assert participants == expected_emails
 
-
     def test__get_event_participants__empty(self) -> None:
         """Check empty list is returned when no participants."""
         event = create_mock_event(id=1)
@@ -142,7 +136,6 @@ class TestBookingsAdapter:
         participants = self.bookings_adapter.get_event_participants(event)
 
         assert participants == []
-
 
     def test__get_all_bookings(self) -> None:
         """Check all bookings are returned."""
@@ -157,7 +150,6 @@ class TestBookingsAdapter:
 
         self.mock_db.query().all.assert_called_once()
         assert bookings == mock_bookings
-
 
     def test__get_all_bookings__empty(self) -> None:
         """Check empty list is returned when no bookings."""

@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 import src.app.domain.exceptions.bookings as booking_errors
 import src.app.domain.exceptions.events as event_errors
 import src.app.domain.exceptions.users as user_errors
-from src.app.services.admins import AdminService
 from src.app.auth import get_current_user
 from src.app.db import get_db
+from src.app.services.admins import AdminService
 from src.app.services.models.bookings import Booking, EventParticipants
 from src.app.services.models.common import Success
 from src.app.services.models.users import User, UserCreate
